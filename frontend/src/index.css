@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Custom scrollbar styles */
+.scrollbar-overlay {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.scrollbar-overlay::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: #eaeaea;
+}
+
+/* .container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+} */
+
+/* .form-box {
+  background-color: #ffffff;
+  width: 450px;
+  padding: 30px;
+  border-radius: 8px;
+} */
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-weight: bold;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+  font-size: 14px;
+}
+/* Checkbox er jonno special rule */
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin-right: 8px;
+}
+
+/* Remember section alignment */
+.remember label {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+/* Checkbox ke full width na korte */
+.remember input {
+  width: auto;
+  padding: 0;
+  margin-right: 8px;
+}
+
+/* Checkbox ar text ek sathe rakhar jonno */
+.remember label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 8px;
+  background-color: #9ed6b3;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: #8bc9a3;
+}
+.options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.bottom-text {
+  text-align: center;
+  margin-top: 20px;
+}
+
+a {
+  color: purple;
+  text-decoration: none;
+}
