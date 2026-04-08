@@ -2,65 +2,57 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <div>
-      <footer className="bg-gray-900 text-gray-300 px-10 py-10">
-        {/* Top Section */}
-        <div className="grid grid-cols-4 gap-10">
-          {/* Column 1 */}
-          <div>
-            <h2 className="text-white text-xl font-semibold mb-3">
-              🏢 HouseRent BD
-            </h2>
-
-            <p className="text-sm leading-6">
-              Find your perfect home easily. Connecting landlords and tenants
-              across Bangladesh.
-            </p>
-          </div>
-
-          {/* Column 2 */}
-          <div>
-            <h3 className="text-white font-semibold mb-3">Quick Links</h3>
-
-            <ul className="space-y-2">
-             <li><Link to="/home">Home</Link></li> 
-              <li><Link to="/browse Houses">Browse Houses</Link></li>
-             <li><Link to="/post Property">Post Property</Link></li>
-             <li><Link to="/register">Register</Link></li>
-            </ul>
-          </div>
-
-          {/* Column 3 */}
-          <div>
-            <h3 className="text-white font-semibold mb-3">Support</h3>
-
-            <ul className="space-y-2">
-              <li>Help Center</li>
-              <li>Terms of Service</li>
-              <li>Privacy Policy</li>
-              <li>Contact Us</li>
-            </ul>
-          </div>
-
-          {/* Column 4 */}
-          <div>
-            <h3 className="text-white font-semibold mb-3">Contact</h3>
-
-            <ul className="space-y-2">
-              <li>📧 support@houserentbd.com</li>
-              <li>📞 +880 1711-123456</li>
-              <li>📍 Dhaka, Bangladesh</li>
-            </ul>
-          </div>
+    <footer className="bg-white border-t border-gray-200 pt-16 mt-16 pb-8">
+      <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
+        {/* Column 1 */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            About BashaLagbe
+          </h2>
+          <p className="text-gray-500 text-sm leading-6 max-w-sm">
+            Bangladesh's leading online platform for finding rental properties.
+            Connect tenants with property owners easily.
+          </p>
         </div>
 
-        {/* Bottom Line */}
-        <div className="border-t border-gray-700 mt-8 pt-4 text-center text-sm">
-          © 2026 HouseRent BD. All rights reserved.
+        {/* Column 2 */}
+        <div>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Quick Links</h3>
+          <ul className="space-y-3 text-sm text-gray-500">
+            <li>
+              <Link to="/login" className="hover:text-blue-600">
+                Login
+              </Link>
+            </li>
+            <li>
+              <Link to="/register" className="hover:text-blue-600">
+                Register
+              </Link>
+            </li>
+            <li>
+              <Link to="/property" className="hover:text-blue-600">
+                Browse Properties
+              </Link>
+            </li>
+          </ul>
         </div>
-      </footer>
-      );
-    </div>
+
+        {/* Column 3 */}
+        <div>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Contact Us</h3>
+          <ul className="space-y-3 text-sm text-gray-500">
+            <li>Email: info@bashalagbe.com</li>
+            <li>Phone: +880 1234-567890</li>
+            <li>Address: Dhaka, Bangladesh</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Bottom Line */}
+      <div className="border-t border-gray-200 mt-12 pt-6 text-center text-sm text-gray-500">
+        © 2026 BashaLagbe. All rights reserved.
+      </div>
+    </footer>
   );
 };
 
