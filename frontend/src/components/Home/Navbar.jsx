@@ -4,24 +4,24 @@ const Navbar = () => {
   return (
     <div className="bg-white border-b border-gray-100">
       {/* Top Navbar */}
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Logo */}
         <div className="flex items-center gap-2 text-blue-600 text-2xl font-bold">
-          <div className="bg-blue-600 text-white p-2 rounded-lg">🏠</div>
+          <div className="bg-blue-600 text-white p-1 rounded-lg">🏠</div>
           BashaLagbe
         </div>
 
         {/* Right Buttons */}
-        <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full md:w-auto">
+          <button className="flex items-center gap-2 border border-gray-300 px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 flex-1 md:flex-none justify-center">
             <span>+</span> Add Property
           </button>
-          <button className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+          <button className="flex items-center gap-2 border border-gray-300 px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 flex-1 md:flex-none justify-center">
             🏠 Order Home
           </button>
           <Link
             to="/login"
-            className="flex items-center gap-2 border border-blue-600 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50"
+            className="flex items-center gap-2 border border-blue-600 text-blue-600 px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 w-full md:w-auto justify-center mt-2 md:mt-0"
           >
             👤 Login/Registration
           </Link>
@@ -29,9 +29,9 @@ const Navbar = () => {
       </div>
 
       {/* Bottom Menu Navbar */}
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left Menu */}
-        <div className="flex items-center gap-8 text-gray-600 text-sm font-medium">
+        <div className="flex flex-wrap justify-center items-center gap-4 md:gap-8 text-gray-600 text-sm font-medium w-full md:w-auto">
           <Link
             to="/home"
             className="flex items-center gap-2 text-black font-semibold"
@@ -62,7 +62,7 @@ const Navbar = () => {
         </div>
 
         {/* Search Box */}
-        <div className="relative w-64">
+        <div className="relative w-full md:w-64 mt-2 md:mt-0">
           <input
             type="text"
             placeholder="Search"

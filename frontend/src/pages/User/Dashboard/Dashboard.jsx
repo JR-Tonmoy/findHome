@@ -1,171 +1,212 @@
+import { Eye, FileText, Heart } from "lucide-react"; // Import icons for stats
+import { Link } from "react-router-dom"; // Import Link
+
 const Dashboard = () => {
-
-  // 🔹 Protita house alada data (image + text)
-
-  const houses = [
+  // Recommended properties data
+  const recommendedHouses = [
     {
-      title: "Modern Family House",
-      location: "Uttara, Dhaka",
-      price: "25,500/month",
-      image:
-        "https://images.unsplash.com/photo-1568605114967-8130f3a36994",
+      id: 201,
+      title: "3 Bedroom Apartment",
+      location: "Bashundhara, Dhaka",
+      price: "28,000",
+      image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994",
+      status: "Available",
     },
     {
+      id: 202,
       title: "Bachelor Room",
-      location: "Nikunja, Dhaka",
-      price: "12,000/month",
-      image:
-        "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
+      location: "Rampura, Dhaka",
+      price: "8,000",
+      image: "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
+      status: "Available",
     },
     {
-      title: "Flat and Apartment",
-      location: "Gulshan, Dhaka",
-      price: "75,000/month",
-      image:
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      id: 203,
+      title: "Family Flat",
+      location: "Dhanmondi, Dhaka",
+      price: "22,000",
+      image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      status: "Available",
     },
     {
-      title: "Hotels",
-      location: "Mirpur, Dhaka",
-      price: "10,000/month",
-      image:
-        "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa",
-    },
-    {
-      title: "Shops",
-      location: "Badda, Dhaka",
-      price: "7,000/month",
-      image:
-        "https://images.unsplash.com/photo-1515169067865-5387ec356754",
+      id: 204,
+      title: "Modern Studio",
+      location: "Banani, Dhaka",
+      price: "18,000",
+      image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa",
+      status: "Available",
     },
   ];
 
   return (
-    <div>
+    <div className="max-w-5xl mx-auto">
+      {/* Header section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+        <h1 className="text-2xl font-bold text-gray-800">
+          Welcome back, Tenant!
+        </h1>
+        <p className="text-gray-500 mt-2 text-sm sm:text-base">
+          Here's what's happening with your property search
+        </p>
+      </div>
 
-      {/* Header */}
-      <h1 className="text-3xl font-bold">
-        Dashboard
-      </h1>
-
-      <p className="text-gray-500 mt-2">
-        Welcome back! Here's your overview
-      </p>
-
-      {/* Cards */}
-      <div className="grid grid-cols-3 gap-6 mt-6">
-
-        <div className="bg-white p-5 rounded-lg shadow flex justify-between items-center">
+      {/* Cards - Responsive grid: 1 col on mobile, 3 cols on tablet and desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-6">
+        {/* Saved Houses Card */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
           <div>
-            <p className="text-gray-500">Saved Houses</p>
-            <h2 className="text-2xl font-bold">8</h2>
+            <p className="text-gray-500 text-sm mb-1">Saved Houses</p>
+            <h2 className="text-3xl font-bold text-gray-800">12</h2>
           </div>
-
-          <div className="bg-blue-100 p-3 rounded-lg text-blue-600 text-xl">
-            ❤️
+          <div className="bg-blue-50 p-3 rounded-xl text-blue-500">
+            <Heart size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-lg shadow flex justify-between items-center">
+        {/* Active Requests Card */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
           <div>
-            <p className="text-gray-500">Active Requests</p>
-            <h2 className="text-2xl font-bold">3</h2>
+            <p className="text-gray-500 text-sm mb-1">Active Requests</p>
+            <h2 className="text-3xl font-bold text-gray-800">5</h2>
           </div>
-
-          <div className="bg-yellow-100 p-3 rounded-lg text-yellow-600 text-xl">
-            📄
+          <div className="bg-green-50 p-3 rounded-xl text-green-500">
+            <FileText size={24} />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-lg shadow flex justify-between items-center">
+        {/* Properties Viewed Card */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
           <div>
-            <p className="text-gray-500">Properties Viewed</p>
-            <h2 className="text-2xl font-bold">24</h2>
+            <p className="text-gray-500 text-sm mb-1">Properties Viewed</p>
+            <h2 className="text-3xl font-bold text-gray-800">28</h2>
           </div>
-
-          <div className="bg-green-100 p-3 rounded-lg text-green-600 text-xl">
-            📈
+          <div className="bg-purple-50 p-3 rounded-xl text-purple-500">
+            <Eye size={24} />
           </div>
         </div>
-
       </div>
 
       {/* Recommended Section */}
-      <h2 className="text-2xl font-bold mt-10">
-        Recommended For You
+      <h2 className="text-xl md:text-2xl font-bold mt-10 mb-6 text-gray-800">
+        Recommended Properties
       </h2>
 
-      <div className="grid grid-cols-5 gap-4 mt-4">
-
-        {houses.map((house, index) => (
-
+      {/* Grid: 1 col mobile, 2 col tablet/desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {recommendedHouses.map((house, index) => (
           <div
             key={index}
-            className="bg-white border rounded-lg shadow hover:shadow-lg transition"
+            className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition bg-gray-50"
           >
-
-            {/* Image */}
-            <img
-              src={house.image}
-              alt="house"
-              className="w-full h-40 object-cover rounded-t"
-            />
-
-            <div className="p-3">
-
-              <h3 className="font-semibold">
-                {house.title}
-              </h3>
-
-              <p className="text-sm">
-                📍 {house.location}
-              </p>
-
-              <div className="flex justify-between items-center mt-2">
-
-                <span className="text-sm">
-                  ৳ {house.price}
-                </span>
-
-                <button className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-                  View
-                </button>
-
-              </div>
-
+            {/* House Image */}
+            <div className="h-56 overflow-hidden">
+              <img
+                src={house.image}
+                alt={house.title}
+                className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+              />
             </div>
 
+            {/* House Info Details */}
+            <div className="p-5 bg-white">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold text-lg text-gray-800">
+                  {house.title}
+                </h3>
+                <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded">
+                  {house.status}
+                </span>
+              </div>
+
+              <p className="text-gray-500 text-sm flex items-center gap-2 mb-4">
+                <span>📍</span> {house.location}
+              </p>
+
+              <div className="flex items-center justify-between mt-4 border-t border-gray-100 pt-4">
+                <div className="text-blue-600 font-bold flex items-center gap-2">
+                  ৳{house.price}{" "}
+                  <span className="text-sm text-gray-500 font-normal">
+                    /month
+                  </span>
+                </div>
+                <Link
+                  to={`/property/${house.id}`}
+                  className="text-white bg-blue-600 px-4 py-1.5 rounded hover:bg-blue-700 transition font-medium text-sm"
+                >
+                  View Details
+                </Link>
+              </div>
+            </div>
           </div>
-
         ))}
-
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white p-6 rounded-lg shadow mt-10">
-
-        <h2 className="text-xl font-semibold mb-4">
+      <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-100 mt-10 mb-10">
+        <h2 className="text-xl font-bold text-gray-800 mb-6">
           Recent Activity
         </h2>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 flex-shrink-0"></div>
+            <div>
+              <p className="text-gray-600 text-sm">
+                <span className="font-semibold text-gray-800">
+                  Saved property:
+                </span>{" "}
+                2 Bedroom Flat in Gulshan
+              </p>
+              <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
+            </div>
+          </div>
 
-          <p>
-            ❤️ You saved "Modern Family House"
-          </p>
+          <div className="w-full h-px bg-gray-100 ml-6"></div>
 
-          <p>
-            📄 Your rental request is pending
-          </p>
+          <div className="flex items-start gap-4">
+            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 flex-shrink-0"></div>
+            <div>
+              <p className="text-gray-600 text-sm">
+                <span className="font-semibold text-gray-800">
+                  Viewed property:
+                </span>{" "}
+                Bachelor Room in Mirpur
+              </p>
+              <p className="text-xs text-gray-400 mt-1">5 hours ago</p>
+            </div>
+          </div>
 
-          <p>
-            📈 You viewed 5 new properties
-          </p>
+          <div className="w-full h-px bg-gray-100 ml-6"></div>
 
+          <div className="flex items-start gap-4">
+            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 flex-shrink-0"></div>
+            <div>
+              <p className="text-gray-600 text-sm">
+                <span className="font-semibold text-gray-800">
+                  Sent request:
+                </span>{" "}
+                3 Bedroom House in Uttara
+              </p>
+              <p className="text-xs text-gray-400 mt-1">1 day ago</p>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-gray-100 ml-6"></div>
+
+          <div className="flex items-start gap-4">
+            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 flex-shrink-0"></div>
+            <div>
+              <p className="text-gray-600 text-sm">
+                <span className="font-semibold text-gray-800">
+                  Viewed property:
+                </span>{" "}
+                Studio in Banani
+              </p>
+              <p className="text-xs text-gray-400 mt-1">2 days ago</p>
+            </div>
+          </div>
         </div>
-
       </div>
-
     </div>
   );
 };

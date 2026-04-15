@@ -1,15 +1,21 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import MainLayout from "../layouts/MainLayout";
-// import Dashboard from "../pages/Dashboard";
 import DashboardLayout from "../layouts/DashboardLayout";
+import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/Forgot-Password/Forgot-Password";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import NotFound from "../pages/NotFound";
 import Register from "../pages/Registration/Registration";
 import Unauthorized from "../pages/Unauthorized";
+import Browse from "../pages/User/Dashboard/Browseahome/Browse";
+import OrderNow from "../pages/User/Dashboard/Browseahome/OrderNow";
+import ViewDetails from "../pages/User/Dashboard/Browseahome/ViewDetails";
 import Dashboard from "../pages/User/Dashboard/Dashboard";
+import MyRequests from "../pages/User/Dashboard/MyRequests";
+import Profile from "../pages/User/Dashboard/Profile";
+import PropertyOwnerDashboard from "../pages/User/Dashboard/PropertyOwnerDashboard"; // ১। এখানে প্রোপ্রার্টি ওনার এর ড্যাশবোর্ড ইমপোর্ট করলাম
+import SavedHouses from "../pages/User/Dashboard/SavedHouses";
 import RoleProtected from "./RoleProtected";
 // import Sidebar from "../pages/User/Sidebar/Sidebar";
 
@@ -28,8 +34,27 @@ const Routers = () => {
       <Route path="/home" element={<Home />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard" element={<DashboardLayout />} />
+
+      {/* 
+        ড্যাশবোর্ড এর ভেতর অন্য পেজ দেখানোর জন্য Nested Route ব্যবহার করা হচ্ছে। 
+        DashboardLayout এর ভেতরে <Outlet /> আছে, যেখানে নিচের পেজগুলো লোড হবে।
+      */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Dashboard />} /> {/* এটি টেনান্ট ড্যাশবোর্ড */}
+        <Route path="browse" element={<Browse />} />
+        <Route path="requests" element={<MyRequests />} />
+        <Route path="saved" element={<SavedHouses />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
+
+      {/* ২। প্রোপার্টি ওনার এর জন্য আলাদা একটি রাউট তৈরি করলাম। যাতে আলাদা ড্যাশবোর্ড দেখতে পাওয়া যায়। */}
+      <Route path="/owner-dashboard" element={<DashboardLayout />}>
+        <Route index element={<PropertyOwnerDashboard />} />
+      </Route>
+
+      <Route path="/property/:id" element={<ViewDetails />} />
+      <Route path="/order/:id" element={<OrderNow />} />
+
       {/* <Route path="/sidebar" element={<Sidebar/>} /> */}
 
       {/* Protected Routes with Layout */}

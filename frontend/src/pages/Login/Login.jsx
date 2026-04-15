@@ -3,35 +3,36 @@
 // import { useNavigate } from "react-router-dom";
 // import { loginSuccess, useLoginMutation } from "../../features/auth/authSlice";
 
-import { Link } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
   // const [login, { isLoading }] = useLoginMutation();
-  // const navigate = useNavigate();
   // const dispatch = useDispatch();
 
-  // const onSubmit = async (data) => {
-  //   const toastId = toast.loading("Logging in...");
-  //   try {
-  //     const response = await login(data).unwrap();
+  // ১। রাউটিং করার জন্য useNavigate হুকটি নিচ্ছি (Using useNavigate for redirection)
+  const navigate = useNavigate();
 
-  //     if (response.data?.token && response.data?.user) {
-  //       toast.success("Login successful!", { id: toastId });
-  //       dispatch(
-  //         loginSuccess({
-  //           user: response.data?.user,
-  //           token: response.data?.token,
-  //         })
-  //       );
-  //       navigate("/dashboard");
-  //     } else {
-  //       toast.error("Invalid response from server.", { id: toastId });
-  //     }
-  //   } catch (err) {
-  //     const errorMessage =
-  //       err?.data?.message || "Login failed. Please try again.";
-  //     toast.error(errorMessage, { id: toastId });
-  //   }
+  // ২। একটি ডেমো স্টেট নিচ্ছি রোল সিলেক্ট করার জন্য যেহেতু এখন API যুক্ত নেই (For demo purpose, using a state to hold selected role)
+  const [role, setRole] = useState("tenant");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // ৩। ফর্ম সাবমিট করার ফাংশন
+  const handleDemoLogin = (e) => {
+    e.preventDefault(); // পেজ রিলোড বন্ধ করার জন্য
+
+    // ৪। রোল চেক করে আলাদা ড্যাশবোর্ডে পাঠাচ্ছি
+    // যদি রিয়েল API থাকত, তাহলে API থেকে role আসতো (e.g. user.role == "owner")
+    if (role === "owner") {
+      navigate("/owner-dashboard"); // ওনার হলে ওনার ড্যাশবোর্ড এ যাবে
+    } else {
+      navigate("/dashboard"); // টেনান্ট হলে টেনান্ট ড্যাশবোর্ড এ যাবে
+    }
+  };
+
+  // const onSubmit = async (data) => {
+  // ... (Commented API logic)
   // };
 
   return (
@@ -46,7 +47,8 @@ const Login = () => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6">
+        {/* ফর্ম এ onSubmit ইভেন্ট যুক্ত করা হলো */}
+        <form className="mt-8 space-y-6" onSubmit={handleDemoLogin}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -64,12 +66,37 @@ const Login = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                required
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  required
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {/* ডেমো লগিন এর জন্য রোল সিলেক্ট করার অপশন নিচে দেওয়া হলো 
+                (যাতে আপনি সহজেই টেস্ট করে দেখতে পারেন) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Login As (Role Selection Demo)
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option value="tenant">Tenant (ভাড়াটিয়া)</option>
+                <option value="owner">Property Owner (বাড়ির মালিক)</option>
+              </select>
             </div>
           </div>
 
@@ -103,7 +130,7 @@ const Login = () => {
               type="submit"
               className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              Login
+              Sign In
             </button>
           </div>
         </form>
