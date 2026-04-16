@@ -1,4 +1,13 @@
-import { FileText, Heart, Home, LogOut, Search, User, X } from "lucide-react"; // Import icons
+import {
+  ClipboardList,
+  FileText,
+  Heart,
+  Home,
+  LogOut,
+  Search,
+  User,
+  X,
+} from "lucide-react"; // Import icons
 import { Link, NavLink } from "react-router-dom";
 
 const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
@@ -9,6 +18,11 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
       label: "Browse Houses",
       path: "/dashboard/browse",
       icon: <Search size={20} />,
+    },
+    {
+      label: "Orders",
+      path: "/dashboard/orders",
+      icon: <ClipboardList size={20} />,
     },
     {
       label: "My Requests",

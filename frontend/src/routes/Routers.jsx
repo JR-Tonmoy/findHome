@@ -1,7 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
+import AdminLayout from "../layouts/AdminLayout"; // Admin Layout Custom
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
+import AdminDashboard from "../pages/Admin/Dashboard/Dashboard"; // Admin ড্যাশবোর্ড ইমপোর্ট করলাম
+import EarnMoney from "../pages/EarnMoney/EarnMoney";
 import ForgotPassword from "../pages/Forgot-Password/Forgot-Password";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
@@ -13,6 +16,7 @@ import OrderNow from "../pages/User/Dashboard/Browseahome/OrderNow";
 import ViewDetails from "../pages/User/Dashboard/Browseahome/ViewDetails";
 import Dashboard from "../pages/User/Dashboard/Dashboard";
 import MyRequests from "../pages/User/Dashboard/MyRequests";
+import Orders from "../pages/User/Dashboard/Orders";
 import Profile from "../pages/User/Dashboard/Profile";
 import PropertyOwnerDashboard from "../pages/User/Dashboard/PropertyOwnerDashboard"; // ১। এখানে প্রোপ্রার্টি ওনার এর ড্যাশবোর্ড ইমপোর্ট করলাম
 import SavedHouses from "../pages/User/Dashboard/SavedHouses";
@@ -32,8 +36,17 @@ const Routers = () => {
         }
       />
       <Route path="/home" element={<Home />} />
+      <Route path="/earn" element={<EarnMoney />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* 
+        অ্যাডমিন ড্যাশবোর্ড এর রাউট
+      */}
+      <Route path="/admin" element={<AdminLayout />}>
+        {/* /admin/dashboard */}
+        <Route path="dashboard" element={<AdminDashboard />} />
+      </Route>
 
       {/* 
         ড্যাশবোর্ড এর ভেতর অন্য পেজ দেখানোর জন্য Nested Route ব্যবহার করা হচ্ছে। 
@@ -42,6 +55,7 @@ const Routers = () => {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} /> {/* এটি টেনান্ট ড্যাশবোর্ড */}
         <Route path="browse" element={<Browse />} />
+        <Route path="orders" element={<Orders />} />
         <Route path="requests" element={<MyRequests />} />
         <Route path="saved" element={<SavedHouses />} />
         <Route path="profile" element={<Profile />} />
