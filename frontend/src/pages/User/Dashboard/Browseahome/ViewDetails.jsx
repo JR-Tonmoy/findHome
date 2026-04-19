@@ -3,16 +3,240 @@ import {
   Bath,
   BedDouble,
   Briefcase,
-  Home,
+  Check,
   Layers,
   Mail,
   MapPin,
   Phone,
+  X,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import useAuth from "../../../../hooks/useAuth";
 
 const ViewDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
+
+  // Fake database mimicking featured properties from Home page
+  const featuredProperties = [
+    {
+      id: 1,
+      category: "Family",
+      title: "Premium Family Flat",
+      location: "Dhanmondi",
+      price: "25,000",
+      beds: 3,
+      baths: 3,
+      sqft: 1500,
+      image: "/2 Bedroom.png",
+    },
+    {
+      id: 2,
+      category: "Family",
+      title: "Standard Family Apartment",
+      location: "Mirpur 10",
+      price: "18,000",
+      beds: 2,
+      baths: 2,
+      sqft: 1100,
+      image: "/3baderoom.png",
+    },
+    {
+      id: 3,
+      category: "Family",
+      title: "Affordable Family House",
+      location: "Uttara",
+      price: "20,000",
+      beds: 3,
+      baths: 2,
+      sqft: 1200,
+      image: "/2 Bedroom.png",
+    },
+    {
+      id: 4,
+      category: "Bachelor",
+      title: "Single Bachelor Room",
+      location: "Mohammadpur",
+      price: "6,000",
+      beds: 1,
+      baths: 1,
+      sqft: 300,
+      image: "/SingleRoom.png",
+    },
+    {
+      id: 5,
+      category: "Bachelor",
+      title: "Shared Bachelor Mess",
+      location: "Farmgate",
+      price: "4,000",
+      beds: 1,
+      baths: 1,
+      sqft: 500,
+      image: "/Bacelor.png",
+    },
+    {
+      id: 6,
+      category: "Bachelor",
+      title: "Executive Bachelor Flat",
+      location: "Gulshan",
+      price: "15,000",
+      beds: 1,
+      baths: 1,
+      sqft: 600,
+      image: "/SingleRoom.png",
+    },
+    {
+      id: 7,
+      category: "Office",
+      title: "Corporate Office Space",
+      location: "Banani",
+      price: "80,000",
+      beds: null,
+      baths: 2,
+      sqft: 2000,
+      image: "/Master.png",
+    },
+    {
+      id: 8,
+      category: "Office",
+      title: "Small Startup Office",
+      location: "Badda",
+      price: "30,000",
+      beds: null,
+      baths: 1,
+      sqft: 800,
+      image: "Office Floor Rent.png",
+    },
+    {
+      id: 9,
+      category: "Office",
+      title: "Co-working Space Desk",
+      location: "Karwan Bazar",
+      price: "10,000",
+      beds: null,
+      baths: 1,
+      sqft: 150,
+      image:
+        "https://dreamtouch-bd.com/wp-content/uploads/elementor/thumbs/small-duplex-house-design-in-bangladesh-%E2%80%93-modern-exterior-view-r1roygzxrj534v2p6nclwjnnucaof522he3574p1hk.webp",
+    },
+    {
+      id: 20,
+      category: "Office",
+      title: "Office Floor Rent",
+      location: "Uttara 10",
+      price: "15,000",
+      beds: null,
+      baths: 1,
+      sqft: 150,
+      image:
+        "https://dreamtouch-bd.com/wp-content/uploads/elementor/thumbs/small-duplex-house-design-in-bangladesh-%E2%80%93-modern-exterior-view-r1roygzxrj534v2p6nclwjnnucaof522he3574p1hk.webp",
+    },
+    {
+      id: 10,
+      category: "Sublet",
+      title: "Sublet for Female",
+      location: "Azimpur",
+      price: "5,500",
+      beds: 1,
+      baths: 1,
+      sqft: 250,
+      image: "/SingleRoom.png",
+    },
+    {
+      id: 11,
+      category: "Sublet",
+      title: "Master Bed Sublet",
+      location: "Bashundhara R/A",
+      price: "8,000",
+      beds: 1,
+      baths: 1,
+      sqft: 400,
+      image: "/Master.png",
+    },
+    {
+      id: 12,
+      category: "Sublet",
+      title: "Single Room Sublet",
+      location: "Khilgaon",
+      price: "6,000",
+      beds: 1,
+      baths: 1,
+      sqft: 300,
+      image: "/Bacelor.png",
+    },
+    {
+      id: 13,
+      category: "Hostel",
+      title: "Boys Premium Hostel",
+      location: "Panthapath",
+      price: "5,000",
+      beds: 1,
+      baths: 1,
+      sqft: 200,
+      image: "/SingleRoom.png",
+    },
+    {
+      id: 14,
+      category: "Hostel",
+      title: "Girls Safe Hostel",
+      location: "Shantinagar",
+      price: "6,500",
+      beds: 1,
+      baths: 1,
+      sqft: 250,
+      image: "/Bacelor.png",
+    },
+    {
+      id: 15,
+      category: "Hostel",
+      title: "Executive Working Hostel",
+      location: "Tejgaon",
+      price: "7,000",
+      beds: 1,
+      baths: 1,
+      sqft: 220,
+      image: "/SingleRoom.png",
+    },
+    {
+      id: 16,
+      category: "Shop",
+      title: "Main Road Shop",
+      location: "New Market",
+      price: "50,000",
+      beds: null,
+      baths: null,
+      sqft: 500,
+      image: "https://old.thefinancialexpress.com.bd/uploads/1603899483.jpg",
+    },
+    {
+      id: 17,
+      category: "Shop",
+      title: "Inside Mall Shop",
+      location: "Bashundhara City",
+      price: "80,000",
+      beds: null,
+      baths: null,
+      sqft: 400,
+      image: "https://old.thefinancialexpress.com.bd/uploads/1603899483.jpg",
+    },
+    {
+      id: 18,
+      category: "Shop",
+      title: "Local Area Shop",
+      location: "Moghbazar",
+      price: "15,000",
+      beds: null,
+      baths: null,
+      sqft: 200,
+      image: "https://old.thefinancialexpress.com.bd/uploads/1603899483.jpg",
+    },
+  ];
+
+  const parsedId = parseInt(id);
+  const homeFeature = featuredProperties.find((p) => p.id === parsedId);
 
   // Fake database mimicking all properties
   const allProperties = [
@@ -514,46 +738,80 @@ const ViewDetails = () => {
   ];
 
   // Find the property that matches the id from URL
-  const property = allProperties.find((p) => p.id === parseInt(id)) || {
-    // Fallback for any other IDs clicked from Home/Dashboard
-    id: parseInt(id),
-    title: "Property Listing (ID: " + id + ")",
-    price: "Negotiable",
-    location: "Dhaka, Bangladesh",
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1000,
-    floor: "2nd Floor",
-    type: "Property",
-    description:
-      "This is a great property available for rent. The exact details are dynamically loaded.",
-    features: ["24/7 Security", "Water Supply", "Balcony"],
-    images: [
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800",
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
-      "https://images.unsplash.com/photo-1502672260266-1c1f51baffac3?w=800",
-    ],
-    owner: {
-      name: "BashaLagbe Owner",
-      phone: "+880 1700-000000",
-      email: "contact@bashalagbe.com",
-    },
-  };
+  let property = allProperties.find((p) => p.id === parsedId);
+
+  // If found in featuredProperties but not perfectly matching allProperties (or overriding it)
+  if (homeFeature && (!property || property.title !== homeFeature.title)) {
+    property = {
+      id: homeFeature.id,
+      title: homeFeature.title,
+      price: homeFeature.price,
+      location: homeFeature.location,
+      bedrooms: homeFeature.beds || 0,
+      bathrooms: homeFeature.baths || 0,
+      sqft: homeFeature.sqft || 0,
+      floor: "Varies",
+      type: homeFeature.category,
+      description: `This is a beautiful ${homeFeature.category} property located in ${homeFeature.location}. Perfect for those looking for comfort and convenience in the heart of the city.`,
+      features: ["24/7 Security", "Water Supply", "Excellent Environment"],
+      images: [
+        homeFeature.image,
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+        "https://images.unsplash.com/photo-1502672260266-1c1f51baffac3?w=800",
+      ],
+      owner: {
+        name: "Verified Owner",
+        phone: "+880 1700-000000",
+        email: "owner@example.com",
+      },
+    };
+  }
+
+  // Fallback if not found anywhere
+  if (!property) {
+    property = {
+      // Fallback for any other IDs clicked from Home/Dashboard
+      id: parseInt(id),
+      title: "Property Listing (ID: " + id + ")",
+      price: "Negotiable",
+      location: "Dhaka, Bangladesh",
+      bedrooms: 2,
+      bathrooms: 2,
+      sqft: 1000,
+      floor: "2nd Floor",
+      type: "Property",
+      description:
+        "This is a great property available for rent. The exact details are dynamically loaded.",
+      features: ["24/7 Security", "Water Supply", "Balcony"],
+      images: [
+        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+        "https://images.unsplash.com/photo-1502672260266-1c1f51baffac3?w=800",
+      ],
+      owner: {
+        name: "BashaLagbe Owner",
+        phone: "+880 1700-000000",
+        email: "contact@bashalagbe.com",
+      },
+    };
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen pb-10">
       {/* Header showing Navigation */}
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center mb-8 sticky top-0 z-50">
-        <Link
-          to="/dashboard/browse"
-          className="text-blue-600 text-xl font-bold flex items-center gap-2"
-        >
-          <Home size={24} className="bg-blue-600 text-white rounded p-1" />{" "}
-          BashaLagbe
+        <Link to="/dashboard/browse" className="flex flex-col">
+          <div className="flex items-center gap-2 text-black text-xl font-bold">
+            <div className="bg-black text-white p-1 rounded-lg">🏠</div>
+            BashaLagbe
+          </div>
+          <span className="text-gray-600 text-[10px] font-medium mt-0.5">
+            Find your perfect flat easily
+          </span>
         </Link>
         <Link
           to="/dashboard/browse"
-          className="flex items-center text-gray-500 hover:text-blue-600 font-medium"
+          className="flex items-center text-gray-500 hover:text-black font-medium"
         >
           <ArrowLeft size={18} className="mr-2" /> Back to Browse
         </Link>
@@ -603,7 +861,7 @@ const ViewDetails = () => {
                   </div>
                 </div>
                 <div className="text-left md:text-right">
-                  <div className="text-3xl font-bold text-blue-600 flex items-end md:justify-end">
+                  <div className="text-3xl font-bold text-black flex items-end md:justify-end">
                     ৳{property.price}
                   </div>
                   <div className="text-gray-400 text-sm font-medium mt-1">
@@ -676,7 +934,7 @@ const ViewDetails = () => {
                       key={idx}
                       className="flex items-center text-gray-600 font-medium"
                     >
-                      <span className="w-2 h-2 rounded-full bg-blue-500 mr-3"></span>
+                      <span className="w-2 h-2 rounded-full bg-black mr-3"></span>
                       {feature}
                     </div>
                   ))}
@@ -732,10 +990,22 @@ const ViewDetails = () => {
               </div>
 
               <Link
-                to={`/order/${property.id}`}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+                to={isAuthenticated ? `/order/${property.id}` : "/login"}
+                className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+                onClick={(e) => {
+                  if (!isAuthenticated) {
+                    e.preventDefault();
+                    setShowAuthModal(true);
+                  }
+                }}
               >
-                <Briefcase size={20} /> Order Now
+                {isAuthenticated ? (
+                  <>
+                    <Briefcase size={20} /> Order Now
+                  </>
+                ) : (
+                  <span className="text-white">👤 Login/Register</span>
+                )}
               </Link>
 
               <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-100">
@@ -748,6 +1018,52 @@ const ViewDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Auth Login Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full relative pt-10 pb-6 px-6 md:px-8 text-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black transition cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Icon */}
+            <div className="mx-auto w-16 h-16 border-2 border-black rounded-full flex items-center justify-center mb-6">
+              <Check size={32} className="text-black" />
+            </div>
+
+            {/* Title & Description */}
+            <h3 className="text-xl font-semibold text-black mb-2">
+              Please Login / Register
+            </h3>
+            <p className="text-gray-600 text-sm mb-8 leading-relaxed">
+              We don&apos;t share any information without verified user.
+              <br />
+              So please login for get the full information of this property.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 border-t border-gray-100 pt-6">
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="flex-1 py-2.5 px-4 bg-white border border-black text-black rounded-lg font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => navigate("/register")}
+                className="flex-1 py-2.5 px-4 bg-black border border-black text-white rounded-lg font-medium hover:bg-white hover:text-black transition cursor-pointer"
+              >
+                Register
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

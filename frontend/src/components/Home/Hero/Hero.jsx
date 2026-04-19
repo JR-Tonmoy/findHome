@@ -9,11 +9,11 @@ const Hero = ({ selectedCategory, setSelectedCategory }) => {
   ];
 
   return (
-    <div className="container mx-auto px-4 mt-5 flex flex-wrap justify-center gap-2 md:gap-4">
+    <div className="sticky top-0 z-50 bg-white py-4 container mx-auto px-4 mt-5 flex flex-wrap justify-center gap-2 md:gap-4 border-b border-gray-100 shadow-sm">
       {/* Category Buttons */}
       <button
         onClick={() => setSelectedCategory("All")}
-        className={`flex items-center justify-center gap-2 border px-4 md:px-6 py-2 rounded-lg hover:border-blue-500 text-xs md:text-sm font-medium w-full sm:w-auto transition ${selectedCategory === "All" ? "bg-blue-500 text-white border-blue-500" : "bg-white border-gray-200 text-gray-700"}`}
+        className={`flex items-center justify-center gap-2 border px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-medium w-full sm:w-auto transition cursor-pointer ${selectedCategory === "All" ? "bg-white text-black border-black" : "bg-black text-white border-black hover:bg-gray-800"}`}
       >
         🌟 All
       </button>
@@ -21,7 +21,7 @@ const Hero = ({ selectedCategory, setSelectedCategory }) => {
         <button
           key={cat.name}
           onClick={() => setSelectedCategory(cat.name)}
-          className={`flex items-center justify-center gap-2 border px-4 md:px-6 py-2 rounded-lg hover:border-blue-500 text-xs md:text-sm font-medium w-full sm:w-auto transition ${selectedCategory === cat.name ? "bg-blue-500 text-white border-blue-500" : "bg-white border-gray-200 text-gray-700"}`}
+          className={`flex items-center justify-center gap-2 border px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-medium w-full sm:w-auto transition cursor-pointer ${selectedCategory === cat.name ? "bg-white text-black border-black" : "bg-black text-white border-black hover:bg-gray-800"}`}
         >
           {cat.icon} {cat.name}
         </button>

@@ -6,9 +6,15 @@ const Footer = () => {
       <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
         {/* Column 1 */}
         <div>
-          <h2 className="text-xl font-bold text-white mb-4">
-            About BashaLagbe
-          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-white text-black p-1 rounded-lg">🏠</div>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-bold text-white">BashaLagbe</h2>
+              <span className="text-gray-400 text-[10px] font-medium mt-0.5">
+                Find your perfect flat easily
+              </span>
+            </div>
+          </div>
           <p className="text-white text-sm leading-6 max-w-sm">
             Bangladesh's leading online platform for finding rental properties.
             Connect tenants with property owners easily.

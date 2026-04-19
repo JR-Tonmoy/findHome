@@ -3,7 +3,6 @@ import {
   Calendar,
   CheckCircle,
   CreditCard,
-  Home,
   MapPin,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -227,12 +226,14 @@ const OrderNow = () => {
     <div className="bg-gray-50 min-h-screen">
       {/* Header showing Navigation */}
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center mb-8 sticky top-0 z-50">
-        <Link
-          to="/dashboard/browse"
-          className="text-blue-600 text-xl font-bold flex items-center gap-2"
-        >
-          <Home size={24} className="bg-blue-600 text-white rounded p-1" />{" "}
-          BashaLagbe
+        <Link to="/dashboard/browse" className="flex flex-col">
+          <div className="flex items-center gap-2 text-black text-xl font-bold">
+            <div className="bg-black text-white p-1 rounded-lg">🏠</div>
+            BashaLagbe
+          </div>
+          <span className="text-gray-600 text-[10px] font-medium mt-0.5">
+            Find your perfect flat easily
+          </span>
         </Link>
         <Link
           to={`/property/${property.id}`}

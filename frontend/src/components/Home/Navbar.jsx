@@ -1,29 +1,56 @@
+import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 const Navbar = () => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div className="bg-white border-b border-black">
+    <div className="bg-white border-b border-black relative z-[100]">
       {/* Top Navbar */}
       <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-2 text-black text-2xl font-bold">
-          <div className="bg-black text-white p-1 rounded-lg">🏠</div>
-          BashaLagbe
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 text-black text-2xl font-bold">
+            <div className="bg-black text-white p-1 rounded-lg">🏠</div>
+            BashaLagbe
+          </div>
+          <span className="text-black-1600 text-xs font-medium mt-0">
+            Find your perfect flat easily
+          </span>
         </div>
 
         {/* Right Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full md:w-auto">
-          <button className="flex items-center gap-2 border border-black px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-black hover:text-white flex-1 md:flex-none justify-center">
+          <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black flex-1 md:flex-none justify-center transition">
             <span>+</span> Add Property
           </button>
-          <button className="flex items-center gap-2 border border-black px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-black hover:text-white flex-1 md:flex-none justify-center">
-            🏠 Order Home
-          </button>
+          <Link
+            to="/dashboard/orders"
+            className="flex-1 md:flex-none w-full md:w-auto"
+          >
+            <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer">
+              🏠 Order Home
+            </button>
+          </Link>
           <Link
             to="/login"
-            className="flex items-center gap-2 border border-black text-black px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-black hover:text-white w-full md:w-auto justify-center mt-2 md:mt-0"
+            className="flex-1 md:flex-none w-full md:w-auto mt-2 md:mt-0"
           >
-            👤 Login/Registration
+            <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer">
+              👤 Login/Registration
+            </button>
           </Link>
         </div>
       </div>
@@ -38,12 +65,83 @@ const Navbar = () => {
           >
             🏠 Home
           </Link>
-          <Link
-            to="/property"
-            className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"
-          >
-            🏢 Property list
-          </Link>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-1 border-b-2 border-transparent hover:border-black cursor-pointer font-medium"
+            >
+              🏢 Property list <ChevronDown size={16} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 shadow-lg rounded-lg py-2 z-50">
+                <Link
+                  to="/property"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  {/* Property list ar kaj  */}
+                  All property
+                </Link>
+                <Link
+                  to="/property?division=Barishal"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Barishal division
+                </Link>
+                <Link
+                  to="/property?division=Chittagong"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Chittagong division
+                </Link>
+                <Link
+                  to="/property?division=Dhaka"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Dhaka division
+                </Link>
+                <Link
+                  to="/property?division=Khulna"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Khulna division
+                </Link>
+                <Link
+                  to="/property?division=Mymensingh"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Mymensingh division
+                </Link>
+                <Link
+                  to="/property?division=Rajshahi"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Rajshahi division
+                </Link>
+                <Link
+                  to="/property?division=Rangpur"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Rangpur division
+                </Link>
+                <Link
+                  to="/property?division=Sylhet"
+                  className="block px-5 py-2.5 text-[15px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Sylhet division
+                </Link>
+              </div>
+            )}
+          </div>
           <Link
             to="/profile"
             className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"

@@ -1,6 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Product = ({ selectedCategory = "All" }) => {
+  const navigate = useNavigate();
+
+  const handleViewDetails = (e, propertyId) => {
+    e.preventDefault();
+    navigate(`/property/${propertyId}`);
+  };
+
   // Sample data: 3 properties for each category (Family, Bachelor, Office, Sublet, Hostel, Shop) = 18 total properties
   const featuredProperties = [
     // --- Family Properties ---
@@ -94,7 +101,7 @@ const Product = ({ selectedCategory = "All" }) => {
       beds: null,
       baths: 1,
       sqft: 800,
-      image: "https://old.thefinancialexpress.com.bd/uploads/1603899483.jpg",
+      image: "Office Floor Rent.png",
     },
     {
       id: 9,
@@ -109,6 +116,18 @@ const Product = ({ selectedCategory = "All" }) => {
         "https://dreamtouch-bd.com/wp-content/uploads/elementor/thumbs/small-duplex-house-design-in-bangladesh-%E2%80%93-modern-exterior-view-r1roygzxrj534v2p6nclwjnnucaof522he3574p1hk.webp",
     },
 
+    {
+      id: 20,
+      category: "Office",
+      title: "Office Floor Rent",
+      location: "Uttara 10",
+      price: "15,000",
+      beds: null,
+      baths: 1,
+      sqft: 150,
+      image:
+        "https://dreamtouch-bd.com/wp-content/uploads/elementor/thumbs/small-duplex-house-design-in-bangladesh-%E2%80%93-modern-exterior-view-r1roygzxrj534v2p6nclwjnnucaof522he3574p1hk.webp",
+    },
     // --- Sublet Properties ---
     {
       id: 10,
@@ -283,12 +302,12 @@ const Product = ({ selectedCategory = "All" }) => {
                   </span>
                 </div>
 
-                <Link
-                  to={`/property/${property.id}`}
-                  className="mt-auto block text-center bg-black !text-white font-semibold py-2 rounded-lg hover:bg-gray-800 transition"
+                <button
+                  onClick={(e) => handleViewDetails(e, property.id)}
+                  className="mt-auto block w-full text-center bg-black !text-white font-semibold py-2 rounded-lg hover:bg-gray-800 transition cursor-pointer"
                 >
                   View Details
-                </Link>
+                </button>
               </div>
             </div>
           ))
@@ -299,14 +318,11 @@ const Product = ({ selectedCategory = "All" }) => {
 
       {/* Browse Button */}
       <div className="flex justify-center mt-10">
-        {/* <Link to="/register">
-  <button className="bg-blue-500 text-white px-4 py-2 rounded">
-    Go to Register
-  </button>
-</Link> */}
-        <button className="bg-black text-white px-8 py-3 rounded-lg text-md font-medium hover:bg-white hover:text-black border border-black transition">
-          Browse All Properties
-        </button>
+        <Link to="/dashboard/browse">
+          <button className="bg-black text-white px-8 py-3 rounded-lg text-md font-medium hover:bg-white hover:text-black border border-black transition mt-10">
+            Browse All Properties
+          </button>
+        </Link>
       </div>
     </div>
   );

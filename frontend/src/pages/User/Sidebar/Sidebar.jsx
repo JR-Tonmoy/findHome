@@ -8,9 +8,17 @@ import {
   User,
   X,
 } from "lucide-react"; // Import icons
-import { Link, NavLink } from "react-router-dom";
+import toast from "react-hot-toast";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    toast.success("Thank you!");
+    navigate("/login");
+  };
+
   // Store navigation items in an array for clean and simple code
   const sideMenus = [
     { label: "Dashboard", path: "/dashboard", icon: <Home size={20} /> },
@@ -65,12 +73,14 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
           {/* Logo Section */}
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
             {/* Make BashaLagbe click-able to navigate to Home Page */}
-            <Link
-              to="/home"
-              className="text-blue-600 text-xl font-bold flex items-center gap-2 hover:opacity-90"
-            >
-              <Home size={24} className="bg-blue-600 text-white rounded p-1" />
-              BashaLagbe
+            <Link to="/home" className="flex flex-col">
+              <div className="flex items-center gap-2 text-black text-xl font-bold hover:opacity-90">
+                <div className="bg-black text-white p-1 rounded-lg">🏠</div>
+                BashaLagbe
+              </div>
+              <span className="text-gray-600 text-[10px] font-medium mt-0.5">
+                Find your perfect flat easily
+              </span>
             </Link>
 
             {/* Close (X) button for mobile screen */}
@@ -112,7 +122,10 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
 
         {/* Logout Button Section (Always stays at the bottom) */}
         <div className="px-4">
-          <button className="flex w-full items-center gap-3 px-4 py-3 rounded-lg font-medium text-red-500 hover:bg-red-50 transition-colors">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-lg font-medium text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+          >
             <LogOut size={20} />
             Logout
           </button>
