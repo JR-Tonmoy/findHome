@@ -1,10 +1,22 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Re-check authentication from local storage whenever route changes
+  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const userRole = localStorage.getItem("userRole");
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
+    navigate("/login");
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,14 +56,40 @@ const Navbar = () => {
               🏠 Order Home
             </button>
           </Link>
-          <Link
-            to="/login"
-            className="flex-1 md:flex-none w-full md:w-auto mt-2 md:mt-0"
-          >
-            <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer">
-              👤 Login/Registration
-            </button>
-          </Link>
+          {isAuthenticated ? (
+            <div className="relative group w-full md:w-auto mt-2 md:mt-0 flex-1 md:flex-none">
+              <button
+                className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer h-[38px]"
+                onClick={() =>
+                  navigate(
+                    userRole === "owner" ? "/owner-dashboard" : "/dashboard",
+                  )
+                }
+              >
+                <div className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
+                  {userRole ? userRole[0] : "U"}
+                </div>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity invisible group-hover:visible z-[101]">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              state={{ from: location.pathname + location.search }}
+              className="flex-1 md:flex-none w-full md:w-auto mt-2 md:mt-0"
+            >
+              <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer h-[38px]">
+                👤 Login/Registration
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -143,13 +181,19 @@ const Navbar = () => {
             )}
           </div>
           <Link
-            to="/profile"
+            to={
+              isAuthenticated
+                ? userRole === "owner"
+                  ? "/owner-dashboard/profile"
+                  : "/dashboard/profile"
+                : "/login"
+            }
             className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"
           >
             👤 Profile
           </Link>
           <Link
-            to="/saved"
+            to={isAuthenticated ? "/dashboard/saved" : "/login"}
             className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"
           >
             ♡ Saved Property

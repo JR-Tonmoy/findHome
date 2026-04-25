@@ -5,7 +5,7 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Login = () => {
   // const [login, { isLoading }] = useLoginMutation();
@@ -13,6 +13,7 @@ const Login = () => {
 
   // ১। রাউটিং করার জন্য useNavigate হুকটি নিচ্ছি (Using useNavigate for redirection)
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ২। একটি ডেমো স্টেট নিচ্ছি রোল সিলেক্ট করার জন্য যেহেতু এখন API যুক্ত নেই (For demo purpose, using a state to hold selected role)
   const [role, setRole] = useState("tenant");
@@ -22,13 +23,40 @@ const Login = () => {
   const handleDemoLogin = (e) => {
     e.preventDefault(); // পেজ রিলোড বন্ধ করার জন্য
 
-    // ৪। রোল চেক করে আলাদা ড্যাশবোর্ডে পাঠাচ্ছি
-    // যদি রিয়েল API থাকত, তাহলে API থেকে role আসতো (e.g. user.role == "owner")
-    if (role === "owner") {
-      navigate("/owner-dashboard"); // ওনার হলে ওনার ড্যাশবোর্ড এ যাবে
-    } else {
-      navigate("/dashboard"); // টেনান্ট হলে টেনান্ট ড্যাশবোর্ড এ যাবে
+    const formData = new FormData(e.target);
+    const email = formData.get("email");
+    const password = formData.get("password");
+
+    const demoUserStr = localStorage.getItem("demoRegisteredUser");
+    if (!demoUserStr) {
+      alert("No registered user found. Please register first!");
+      navigate("/register", { state: { from: location.state?.from } });
+      return;
     }
+
+    const demoUser = JSON.parse(demoUserStr);
+
+    if (demoUser.email !== email) {
+      alert("This email is WRONG. Please correct it.");
+      return;
+    }
+    if (demoUser.password !== password) {
+      alert("This password is WRONG. Please correct it.");
+      return;
+    }
+    if (demoUser.role !== role) {
+      alert(
+        `This role is WRONG. You registered as ${demoUser.role === "owner" ? "Property Owner" : "Tenant"}. Please correct it.`,
+      );
+      return;
+    }
+
+    // Set demo authenticated state for Home page to check
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("userRole", role);
+
+    const redirectPath = location.state?.from || "/home";
+    navigate(redirectPath);
   };
 
   // const onSubmit = async (data) => {
@@ -66,6 +94,7 @@ const Login = () => {
               </label>
               <input
                 type="email"
+                name="email"
                 placeholder="Enter your email"
                 required
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
@@ -79,6 +108,7 @@ const Login = () => {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="password"
                   placeholder="Enter your password"
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm pr-10"
@@ -149,6 +179,7 @@ const Login = () => {
           Don't have an account?{" "}
           <Link
             to="/register"
+            state={{ from: location.state?.from }}
             className="font-medium text-black hover:text-gray-800"
           >
             Sign up here

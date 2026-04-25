@@ -11,13 +11,14 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import useAuth from "../../../../hooks/useAuth";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 const ViewDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  // Using localStorage for demo authentication consistency
+  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
   const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
 
   // Fake database mimicking featured properties from Home page
@@ -236,6 +237,9 @@ const ViewDetails = () => {
   ];
 
   const parsedId = parseInt(id);
+
+  // Fallback to location pathname logic if needed
+  const currentLocation = location.pathname + location.search;
   const homeFeature = featuredProperties.find((p) => p.id === parsedId);
 
   // Fake database mimicking all properties
@@ -991,6 +995,7 @@ const ViewDetails = () => {
 
               <Link
                 to={isAuthenticated ? `/order/${property.id}` : "/login"}
+                state={{ from: currentLocation }}
                 className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
                 onClick={(e) => {
                   if (!isAuthenticated) {
@@ -1055,7 +1060,9 @@ const ViewDetails = () => {
                 Cancel
               </button>
               <button
-                onClick={() => navigate("/register")}
+                onClick={() =>
+                  navigate("/register", { state: { from: currentLocation } })
+                }
                 className="flex-1 py-2.5 px-4 bg-black border border-black text-white rounded-lg font-medium hover:bg-white hover:text-black transition cursor-pointer"
               >
                 Register

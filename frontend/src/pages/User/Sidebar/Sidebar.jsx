@@ -15,6 +15,8 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
     toast.success("Thank you!");
     navigate("/login");
   };

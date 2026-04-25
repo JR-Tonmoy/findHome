@@ -12,6 +12,7 @@ const Product = ({ selectedCategory = "All" }) => {
   const featuredProperties = [
     // --- Family Properties ---
     {
+      
       id: 1,
       category: "Family",
       title: "Premium Family Flat",

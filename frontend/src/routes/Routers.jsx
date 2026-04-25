@@ -4,11 +4,15 @@ import AdminLayout from "../layouts/AdminLayout"; // Admin Layout Custom
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
 import AdminDashboard from "../pages/Admin/Dashboard/Dashboard"; // Admin ড্যাশবোর্ড ইমপোর্ট করলাম
+import AdminOwner from "../pages/Admin/Dashboard/Owner";
+import AdminProfile from "../pages/Admin/Dashboard/Profile";
+import AdminUsers from "../pages/Admin/Dashboard/Users"; // Admin Users ইমপোর্ট করলাম
 import EarnMoney from "../pages/EarnMoney/EarnMoney";
 import ForgotPassword from "../pages/Forgot-Password/Forgot-Password";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import NotFound from "../pages/NotFound";
+import OwnerProfile from "../pages/Owner/Dashboard/OwnerProfile"; // ইমপোর্ট করলাম OwnerProfile
 import Register from "../pages/Registration/Registration";
 import Unauthorized from "../pages/Unauthorized";
 import Browse from "../pages/User/Dashboard/Browseahome/Browse";
@@ -46,6 +50,11 @@ const Routers = () => {
       <Route path="/admin" element={<AdminLayout />}>
         {/* /admin/dashboard */}
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="profile" element={<AdminProfile />} />
+        {/* /admin/users */}
+        <Route path="users" element={<AdminUsers />} />
+        {/* /admin/owners */}
+        <Route path="owners" element={<AdminOwner />} />
       </Route>
 
       {/* 
@@ -64,6 +73,7 @@ const Routers = () => {
       {/* ২। প্রোপার্টি ওনার এর জন্য আলাদা একটি রাউট তৈরি করলাম। যাতে আলাদা ড্যাশবোর্ড দেখতে পাওয়া যায়। */}
       <Route path="/owner-dashboard" element={<DashboardLayout />}>
         <Route index element={<PropertyOwnerDashboard />} />
+        <Route path="profile" element={<OwnerProfile />} />
       </Route>
 
       <Route path="/property/:id" element={<ViewDetails />} />

@@ -3,10 +3,10 @@ import MemberProfilePage from "../../../components/profile/MemberProfilePage";
 const Profile = () => {
   return (
     <MemberProfilePage
-      roleLabel="Tenant"
-      fallbackName="User"
-      backFrom="/dashboard/profile"
-      badgeClass="bg-indigo-50 text-indigo-700"
+      roleLabel="Property Owner"
+      fallbackName="Owner"
+      backFrom="/owner-dashboard/profile"
+      badgeClass="bg-emerald-50 text-emerald-700"
     />
   );
 };

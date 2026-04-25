@@ -4,14 +4,93 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Register = () => {
   // const [registerUser, { isLoading }] = useRegisterMutation();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleDemoRegister = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const fullName = formData.get("fullName");
+    const email = formData.get("email");
+    const phone = formData.get("phone");
+    const password = formData.get("password");
+    const confirmPassword = formData.get("confirmPassword");
+    const role = formData.get("role");
+
+    if (!/^01[0-9]{9}$/.test(phone)) {
+      alert(
+        "Please enter a valid 11-digit Bangladeshi phone number starting with 01.",
+      );
+      return;
+    }
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      alert("Please enter a valid email format.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    const registeredDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Save registered user details in local storage to use in login
+    localStorage.setItem(
+      "demoRegisteredUser",
+      JSON.stringify({
+        fullName,
+        email,
+        phone,
+        password,
+        role,
+        date: registeredDate,
+        avatar: "",
+      }),
+    );
+
+    const memberRecord = {
+      id: `#${Date.now()}`,
+      fullName,
+      name: fullName,
+      email,
+      phone,
+      username: `@${String(fullName).trim().toLowerCase().replace(/\s+/g, "")}`,
+      author: "Yes",
+      accountStatus: "Active",
+      kycStatus: "Unverified",
+      emailStatus: "Unverified",
+      date: registeredDate,
+      avatar: "",
+      role,
+    };
+
+    if (role === "owner") {
+      const owners = JSON.parse(
+        localStorage.getItem("registeredOwners") || "[]",
+      );
+      owners.unshift(memberRecord);
+      localStorage.setItem("registeredOwners", JSON.stringify(owners));
+    } else {
+      const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+      users.unshift(memberRecord);
+      localStorage.setItem("registeredUsers", JSON.stringify(users));
+    }
+
+    alert("Registration successful! Please login.");
+    navigate("/login", { state: { from: location.state?.from } });
+  };
 
   // const onSubmit = async (data) => {
   //   const toastId = toast.loading("Creating account...");
@@ -61,7 +140,7 @@ const Register = () => {
         </div>
 
         {/* Form */}
-        <form className="mt-8 space-y-6">
+        <form className="mt-8 space-y-6" onSubmit={handleDemoRegister}>
           <div className="space-y-4">
             {/* Full Name */}
             <div>
@@ -70,6 +149,8 @@ const Register = () => {
               </label>
               <input
                 type="text"
+                name="fullName"
+                required
                 placeholder="Enter your full name"
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
               />
@@ -82,6 +163,10 @@ const Register = () => {
               </label>
               <input
                 type="email"
+                name="email"
+                required
+                pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+                title="Please enter a valid email address (e.g. user@example.com)"
                 placeholder="Enter your email"
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
               />
@@ -94,7 +179,15 @@ const Register = () => {
               </label>
               <input
                 type="text"
-                placeholder="Enter your phone number"
+                name="phone"
+                required
+                maxLength="11"
+                pattern="01[0-9]{9}"
+                title="Please enter a valid 11-digit Bangladeshi phone number starting with 01"
+                onInput={(e) => {
+                  e.target.value = e.target.value.replace(/[^0-9]/g, "");
+                }}
+                placeholder="01XXXXXXXXX"
                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
               />
             </div>
@@ -107,6 +200,8 @@ const Register = () => {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  name="password"
+                  required
                   placeholder="Create a password"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm pr-10"
                 />
@@ -128,6 +223,8 @@ const Register = () => {
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  required
                   placeholder="Re-enter your password"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm pr-10"
                 />
@@ -191,6 +288,7 @@ const Register = () => {
             Already have an account?{" "}
             <Link
               to="/login"
+              state={{ from: location.state?.from }}
               className="font-medium text-black hover:text-gray-800"
             >
               Login here
