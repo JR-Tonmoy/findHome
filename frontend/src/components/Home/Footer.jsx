@@ -40,6 +40,11 @@ const Footer = () => {
                 Browse Properties
               </Link>
             </li>
+            <li>
+              <Link to="/login" className="hover:text-blue-600">
+                Logout
+              </Link>
+            </li>
           </ul>
         </div>
 

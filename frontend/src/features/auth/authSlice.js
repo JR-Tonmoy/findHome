@@ -70,6 +70,8 @@ const authSlice = createSlice({
       // Save to localStorage only here - centralized location
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userRole", user?.role || "user");
     },
     logoutSuccess: (state) => {
       state.user = null;
@@ -79,6 +81,8 @@ const authSlice = createSlice({
       // Clear localStorage
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("userRole");
     },
     // Initialize auth from localStorage on app start
     initializeAuth: (state) => {
@@ -90,11 +94,15 @@ const authSlice = createSlice({
           state.token = token;
           state.user = JSON.parse(user);
           state.isAuthenticated = true;
+          localStorage.setItem("isAuthenticated", "true");
+          localStorage.setItem("userRole", JSON.parse(user)?.role || "user");
         }
       } catch {
         // Clear corrupted data
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("userRole");
       }
     },
   },

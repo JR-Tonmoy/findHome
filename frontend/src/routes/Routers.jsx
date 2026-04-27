@@ -12,6 +12,7 @@ import ForgotPassword from "../pages/Forgot-Password/Forgot-Password";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import NotFound from "../pages/NotFound";
+import AddProperty from "../pages/Owner/Dashboard/AddProperty";
 import OwnerProfile from "../pages/Owner/Dashboard/OwnerProfile"; // ইমপোর্ট করলাম OwnerProfile
 import Register from "../pages/Registration/Registration";
 import Unauthorized from "../pages/Unauthorized";
@@ -73,6 +74,7 @@ const Routers = () => {
       {/* ২। প্রোপার্টি ওনার এর জন্য আলাদা একটি রাউট তৈরি করলাম। যাতে আলাদা ড্যাশবোর্ড দেখতে পাওয়া যায়। */}
       <Route path="/owner-dashboard" element={<DashboardLayout />}>
         <Route index element={<PropertyOwnerDashboard />} />
+        <Route path="add-property" element={<AddProperty />} />
         <Route path="profile" element={<OwnerProfile />} />
       </Route>
 

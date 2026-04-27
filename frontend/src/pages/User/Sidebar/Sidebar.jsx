@@ -4,48 +4,90 @@ import {
   Heart,
   Home,
   LogOut,
+  PlusCircle,
   Search,
   User,
   X,
 } from "lucide-react"; // Import icons
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { logoutSuccess } from "../../../features/auth/authSlice";
+import useAuth from "../../../hooks/useAuth";
+import { getCurrentMemberProfile } from "../../../utils/memberStorage";
 
 const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useAuth();
+
+  const userRole = (
+    user?.role ||
+    localStorage.getItem("userRole") ||
+    ""
+  ).toLowerCase();
+  const isOwner = userRole === "owner" || userRole === "property owner";
+  const memberProfile = getCurrentMemberProfile();
+  const roleLabel = isOwner ? "Owner" : "Tenant";
+  const profileInitial =
+    (memberProfile.fullName || user?.fullName || user?.name || "U")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "U";
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
+    dispatch(logoutSuccess());
     toast.success("Thank you!");
     navigate("/login");
   };
 
   // Store navigation items in an array for clean and simple code
-  const sideMenus = [
-    { label: "Dashboard", path: "/dashboard", icon: <Home size={20} /> },
-    {
-      label: "Browse Houses",
-      path: "/dashboard/browse",
-      icon: <Search size={20} />,
-    },
-    {
-      label: "Orders",
-      path: "/dashboard/orders",
-      icon: <ClipboardList size={20} />,
-    },
-    {
-      label: "My Requests",
-      path: "/dashboard/requests",
-      icon: <FileText size={20} />,
-    },
-    {
-      label: "Saved Houses",
-      path: "/dashboard/saved",
-      icon: <Heart size={20} />,
-    },
-    { label: "Profile", path: "/dashboard/profile", icon: <User size={20} /> },
-  ];
+  const sideMenus = isOwner
+    ? [
+        {
+          label: "Dashboard",
+          path: "/owner-dashboard",
+          icon: <Home size={20} />,
+        },
+        {
+          label: "Add Property",
+          path: "/owner-dashboard/add-property",
+          icon: <PlusCircle size={20} />,
+        },
+        {
+          label: "Profile",
+          path: "/owner-dashboard/profile",
+          icon: <User size={20} />,
+        },
+      ]
+    : [
+        { label: "Dashboard", path: "/dashboard", icon: <Home size={20} /> },
+        {
+          label: "Browse Houses",
+          path: "/dashboard/browse",
+          icon: <Search size={20} />,
+        },
+        {
+          label: "Orders",
+          path: "/dashboard/orders",
+          icon: <ClipboardList size={20} />,
+        },
+        {
+          label: "My Requests",
+          path: "/dashboard/requests",
+          icon: <FileText size={20} />,
+        },
+        {
+          label: "Saved Houses",
+          path: "/dashboard/saved",
+          icon: <Heart size={20} />,
+        },
+        {
+          label: "Profile",
+          path: "/dashboard/profile",
+          icon: <User size={20} />,
+        },
+      ];
 
   return (
     <>
@@ -92,6 +134,33 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
             >
               <X size={20} />
             </button>
+          </div>
+
+          <div className="mx-4 mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-full bg-black text-white flex items-center justify-center font-bold text-sm overflow-hidden">
+                {memberProfile.avatar ? (
+                  <img
+                    src={memberProfile.avatar}
+                    alt={memberProfile.fullName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  profileInitial
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-black truncate">
+                  {memberProfile.fullName}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate">
+                  {memberProfile.email}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+              {roleLabel}
+            </div>
           </div>
 
           <ul className="p-4 space-y-2 mt-4">

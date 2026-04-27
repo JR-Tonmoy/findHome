@@ -14,18 +14,20 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
+import { logoutSuccess } from "../../../features/auth/authSlice";
 import { getAdminProfile } from "../../../utils/memberStorage";
 
 const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [activeMenu, setActiveMenu] = useState("Users");
   const [isMembersOpen, setIsMembersOpen] = useState(true);
   const adminProfile = getAdminProfile();
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
+    dispatch(logoutSuccess());
     toast.success("Thank you!");
     navigate("/login");
   };

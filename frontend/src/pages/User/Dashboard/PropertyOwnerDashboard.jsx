@@ -1,4 +1,5 @@
 import { DollarSign, Home, PlusCircle, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const PropertyOwnerDashboard = () => {
   // প্রোপার্টি ওনার এর জন্য ডেমো ডেটা (কিছু প্রোপার্টি যা ওনার অ্যাড করেছে)
@@ -77,10 +78,13 @@ const PropertyOwnerDashboard = () => {
           My Properties (আমার প্রোপার্টিসমূহ)
         </h2>
         {/* নতুন প্রোপার্টি অ্যাড করার বাটন */}
-        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        <Link
+          to="/owner-dashboard/add-property"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
           <PlusCircle size={18} />
           Add Property
-        </button>
+        </Link>
       </div>
 
       {/* গ্রিড লেআউট প্রোপার্টি দেখানোর জন্য */}

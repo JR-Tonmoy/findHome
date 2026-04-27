@@ -5,11 +5,14 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { loginSuccess } from "../../features/auth/authSlice";
 
 const Login = () => {
   // const [login, { isLoading }] = useLoginMutation();
   // const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   // ১। রাউটিং করার জন্য useNavigate হুকটি নিচ্ছি (Using useNavigate for redirection)
   const navigate = useNavigate();
@@ -52,8 +55,12 @@ const Login = () => {
     }
 
     // Set demo authenticated state for Home page to check
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", role);
+    const currentUser = {
+      ...demoUser,
+      role,
+    };
+
+    dispatch(loginSuccess({ user: currentUser, token: `demo-${Date.now()}` }));
 
     const redirectPath = location.state?.from || "/home";
     navigate(redirectPath);
