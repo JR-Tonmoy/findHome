@@ -25,6 +25,7 @@ import Orders from "../pages/User/Dashboard/Orders";
 import Profile from "../pages/User/Dashboard/Profile";
 import PropertyOwnerDashboard from "../pages/User/Dashboard/PropertyOwnerDashboard"; // ১। এখানে প্রোপ্রার্টি ওনার এর ড্যাশবোর্ড ইমপোর্ট করলাম
 import SavedHouses from "../pages/User/Dashboard/SavedHouses";
+import Protected from "./Protected";
 import RoleProtected from "./RoleProtected";
 // import Sidebar from "../pages/User/Sidebar/Sidebar";
 
@@ -48,7 +49,14 @@ const Routers = () => {
       {/* 
         অ্যাডমিন ড্যাশবোর্ড এর রাউট
       */}
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route
+        path="/admin"
+        element={
+          <Protected>
+            <AdminLayout />
+          </Protected>
+        }
+      >
         {/* /admin/dashboard */}
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="profile" element={<AdminProfile />} />
@@ -62,7 +70,14 @@ const Routers = () => {
         ড্যাশবোর্ড এর ভেতর অন্য পেজ দেখানোর জন্য Nested Route ব্যবহার করা হচ্ছে। 
         DashboardLayout এর ভেতরে <Outlet /> আছে, যেখানে নিচের পেজগুলো লোড হবে।
       */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
+      <Route
+        path="/dashboard"
+        element={
+          <Protected>
+            <DashboardLayout />
+          </Protected>
+        }
+      >
         <Route index element={<Dashboard />} /> {/* এটি টেনান্ট ড্যাশবোর্ড */}
         <Route path="browse" element={<Browse />} />
         <Route path="orders" element={<Orders />} />
@@ -72,7 +87,14 @@ const Routers = () => {
       </Route>
 
       {/* ২। প্রোপার্টি ওনার এর জন্য আলাদা একটি রাউট তৈরি করলাম। যাতে আলাদা ড্যাশবোর্ড দেখতে পাওয়া যায়। */}
-      <Route path="/owner-dashboard" element={<DashboardLayout />}>
+      <Route
+        path="/owner-dashboard"
+        element={
+          <Protected>
+            <DashboardLayout />
+          </Protected>
+        }
+      >
         <Route index element={<PropertyOwnerDashboard />} />
         <Route path="add-property" element={<AddProperty />} />
         <Route path="profile" element={<OwnerProfile />} />

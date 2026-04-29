@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { findPropertyById } from "../../../../utils/propertyStorage";
 
 const ViewDetails = () => {
   const { id } = useParams();
@@ -236,11 +237,11 @@ const ViewDetails = () => {
     },
   ];
 
-  const parsedId = parseInt(id);
+  const parsedId = String(id);
 
   // Fallback to location pathname logic if needed
   const currentLocation = location.pathname + location.search;
-  const homeFeature = featuredProperties.find((p) => p.id === parsedId);
+  const homeFeature = featuredProperties.find((p) => String(p.id) === parsedId);
 
   // Fake database mimicking all properties
   const allProperties = [
@@ -742,7 +743,9 @@ const ViewDetails = () => {
   ];
 
   // Find the property that matches the id from URL
-  let property = allProperties.find((p) => p.id === parsedId);
+  let property =
+    findPropertyById(parsedId) ||
+    allProperties.find((p) => String(p.id) === parsedId);
 
   // If found in featuredProperties but not perfectly matching allProperties (or overriding it)
   if (homeFeature && (!property || property.title !== homeFeature.title)) {
@@ -775,7 +778,7 @@ const ViewDetails = () => {
   if (!property) {
     property = {
       // Fallback for any other IDs clicked from Home/Dashboard
-      id: parseInt(id),
+      id: String(id),
       title: "Property Listing (ID: " + id + ")",
       price: "Negotiable",
       location: "Dhaka, Bangladesh",

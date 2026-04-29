@@ -1,14 +1,4 @@
-import {
-  ClipboardList,
-  FileText,
-  Heart,
-  Home,
-  LogOut,
-  PlusCircle,
-  Search,
-  User,
-  X,
-} from "lucide-react"; // Import icons
+import { Heart, Home, LogOut, PlusCircle, Search, User, X } from "lucide-react"; // Import icons
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { Link, NavLink, useNavigate } from "react-router-dom";
@@ -66,16 +56,6 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
           label: "Browse Houses",
           path: "/dashboard/browse",
           icon: <Search size={20} />,
-        },
-        {
-          label: "Orders",
-          path: "/dashboard/orders",
-          icon: <ClipboardList size={20} />,
-        },
-        {
-          label: "My Requests",
-          path: "/dashboard/requests",
-          icon: <FileText size={20} />,
         },
         {
           label: "Saved Houses",
@@ -178,8 +158,8 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
                       isActive
-                        ? "bg-blue-50 text-blue-600" // Light blue background and blue text for active active link
-                        : "text-gray-500 hover:bg-gray-50 hover:text-blue-600" // Normal state colors
+                        ? "bg-blue-50 text-black" // Light blue background and black text for active link
+                        : "text-black hover:bg-gray-50 hover:text-black" // Normal state colors
                     }`
                   }
                 >

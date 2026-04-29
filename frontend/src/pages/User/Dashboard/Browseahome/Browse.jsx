@@ -1,71 +1,49 @@
 import { BedDouble, Filter, Heart, MapPin } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
+import { HOME_FEATURED_PROPERTIES } from "../../../../utils/propertyCatalog";
+import {
+  isPropertySaved,
+  toggleSavedProperty,
+} from "../../../../utils/savedPropertyStorage";
 
-// Dummy data for the houses
-const properties = [
-  {
-    id: 1,
-    title: "2 Bedroom Apartment",
-    location: "Dhanmondi, Dhaka",
-    beds: 2,
-    type: "Apartment",
-    price: "15,000",
-    image:
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-  {
-    id: 2,
-    title: "Bachelor Room",
-    location: "Mohammadpur, Dhaka",
-    beds: 1,
-    type: "Room",
-    price: "6,000",
-    image:
-      "https://images.unsplash.com/photo-1502672260266-1c1f51baffac3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-  {
-    id: 3,
-    title: "3 Bedroom Family House",
-    location: "Gulshan, Dhaka",
-    beds: 3,
-    type: "House",
-    price: "35,000",
-    image:
-      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-  {
-    id: 4,
-    title: "Commercial Shop",
-    location: "Mirpur, Dhaka",
-    beds: 0,
-    type: "Shop",
-    price: "25,000",
-    image:
-      "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-  {
-    id: 5,
-    title: "Studio Apartment",
-    location: "Banani, Dhaka",
-    beds: 1,
-    type: "Apartment",
-    price: "12,000",
-    image:
-      "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-  {
-    id: 6,
-    title: "4 Bedroom Duplex",
-    location: "Uttara, Dhaka",
-    beds: 4,
-    type: "House",
-    price: "45,000",
-    image:
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-  },
-];
+const properties = HOME_FEATURED_PROPERTIES;
 
 const Browse = () => {
+  const currentMember = getCurrentMemberProfile();
+  const savedStorageKey = currentMember.email;
+  const [showAllProperties, setShowAllProperties] = useState(false);
+  const [, setSavedVersion] = useState(0);
+  useEffect(() => {
+    const refreshSavedState = () => {
+      setSavedVersion((currentValue) => currentValue + 1);
+    };
+
+    window.addEventListener("saved-properties-updated", refreshSavedState);
+    window.addEventListener("storage", refreshSavedState);
+
+    return () => {
+      window.removeEventListener("saved-properties-updated", refreshSavedState);
+      window.removeEventListener("storage", refreshSavedState);
+    };
+  }, []);
+
+  const savedPropertyMap = properties.reduce((accumulator, property) => {
+    accumulator[property.id] = isPropertySaved(property.id, savedStorageKey);
+    return accumulator;
+  }, {});
+
+  const handleToggleSaved = (propertyId) => {
+    const property = properties.find((item) => item.id === propertyId);
+
+    toggleSavedProperty(property || propertyId, savedStorageKey);
+  };
+
+  const displayedProperties = showAllProperties
+    ? properties
+    : properties.slice(0, 3);
+
   return (
     <div className="p-6">
       {/* Header section */}
@@ -98,7 +76,7 @@ const Browse = () => {
 
       {/* Grid of properties */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {properties.map((property) => (
+        {displayedProperties.map((property) => (
           <div
             key={property.id}
             className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
@@ -118,8 +96,27 @@ const Browse = () => {
                 <h3 className="text-lg font-bold text-gray-800">
                   {property.title}
                 </h3>
-                <button className="text-gray-400 hover:text-red-500 transition-colors">
-                  <Heart size={20} />
+                <button
+                  type="button"
+                  onClick={() => handleToggleSaved(property.id)}
+                  className={`transition-colors ${
+                    savedPropertyMap[property.id]
+                      ? "text-red-500"
+                      : "text-gray-400 hover:text-red-500"
+                  }`}
+                  aria-pressed={savedPropertyMap[property.id]}
+                  aria-label={
+                    savedPropertyMap[property.id]
+                      ? "Remove from saved houses"
+                      : "Save house"
+                  }
+                >
+                  <Heart
+                    size={20}
+                    fill={
+                      savedPropertyMap[property.id] ? "currentColor" : "none"
+                    }
+                  />
                 </button>
               </div>
 
@@ -160,6 +157,16 @@ const Browse = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="flex justify-center mt-10">
+        <button
+          type="button"
+          onClick={() => setShowAllProperties(true)}
+          className="bg-black text-white px-8 py-3 rounded-lg text-md font-medium hover:bg-white hover:text-black border border-black transition mt-10"
+        >
+          Browse All Properties
+        </button>
       </div>
     </div>
   );

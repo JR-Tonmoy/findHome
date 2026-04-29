@@ -1,4 +1,16 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  BD_DIVISIONS,
+  DISTRICTS_BY_DIVISION,
+  LOCATION_TREE,
+} from "../../../../constants";
+import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import {
+  deleteProperty,
+  findPropertyById,
+  saveProperty,
+} from "../../../utils/propertyStorage";
 
 const selectInputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-black outline-none focus:border-black";
@@ -8,61 +20,290 @@ const textInputClass =
 
 const sectionClass = "rounded-xl border border-gray-200 bg-white p-4 md:p-5";
 
+const floorOptions = ["Ground", "1st", "2nd"];
+
 const AddProperty = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const propertyId = searchParams.get("propertyId");
+  const editingProperty = useMemo(
+    () => (propertyId ? findPropertyById(propertyId) : null),
+    [propertyId],
+  );
+  const [floor, setFloor] = useState("");
+  const [division, setDivision] = useState("");
+  const [district, setDistrict] = useState("");
+  const [area, setArea] = useState("");
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [imageInputKey, setImageInputKey] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const currentOwner = getCurrentMemberProfile();
+  const isEditing = Boolean(editingProperty);
+
+  const isDivisionSelected = Boolean(DISTRICTS_BY_DIVISION[division]);
+
+  const districtOptions = useMemo(() => {
+    if (!isDivisionSelected) {
+      return [];
+    }
+
+    return DISTRICTS_BY_DIVISION[division];
+  }, [division, isDivisionSelected]);
+
+  const isDistrictSelected = districtOptions.includes(district);
+
+  const areaOptions = useMemo(() => {
+    if (!isDivisionSelected || !isDistrictSelected) {
+      return [];
+    }
+
+    return LOCATION_TREE[division]?.[district] || [];
+  }, [division, district, isDivisionSelected, isDistrictSelected]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    Promise.resolve().then(() => {
+      if (!isActive) {
+        return;
+      }
+
+      if (!editingProperty) {
+        setFloor("");
+        setDivision("");
+        setDistrict("");
+        setArea("");
+        setUploadedImages([]);
+        setImageInputKey((currentKey) => currentKey + 1);
+        setStatusMessage("");
+        return;
+      }
+
+      setFloor(editingProperty.floor || "");
+      setDivision(editingProperty.division || "");
+      setDistrict(editingProperty.district || "");
+      setArea(editingProperty.area || "");
+      setUploadedImages(
+        Array.isArray(editingProperty.images) &&
+          editingProperty.images.length > 0
+          ? editingProperty.images
+          : editingProperty.image
+            ? [editingProperty.image]
+            : [],
+      );
+      setImageInputKey((currentKey) => currentKey + 1);
+      setStatusMessage("");
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [editingProperty]);
+
+  const handleDivisionChange = (event) => {
+    setDivision(event.target.value);
+    setDistrict("");
+    setArea("");
+  };
+
+  const handleDistrictChange = (event) => {
+    setDistrict(event.target.value);
+    setArea("");
+  };
+
+  const handleImageUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+
+    if (!files.length) {
+      return;
+    }
+
+    const nextImages = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
+
+    setUploadedImages((currentImages) => [...currentImages, ...nextImages]);
+    setImageInputKey((currentKey) => currentKey + 1);
+    event.target.value = "";
+  };
+
+  const handleRemoveImage = (imageIndex) => {
+    setUploadedImages((currentImages) =>
+      currentImages.filter((_, index) => index !== imageIndex),
+    );
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const facilities = formData.getAll("facilities");
+    const property = saveProperty({
+      id: editingProperty?.id,
+      title: String(formData.get("title") || "").trim(),
+      category: String(formData.get("propertyType") || "Family"),
+      type: String(formData.get("category") || "Property"),
+      month: String(formData.get("month") || ""),
+      location: [
+        formData.get("area"),
+        formData.get("district"),
+        formData.get("division"),
+      ]
+        .filter(Boolean)
+        .join(", "),
+      price: String(formData.get("price") || "").trim(),
+      priceType: String(formData.get("priceType") || "Monthly"),
+      beds: String(formData.get("bedrooms") || ""),
+      baths: String(formData.get("bathrooms") || ""),
+      sqft: String(formData.get("sqft") || "").trim(),
+      floor: String(formData.get("floor") || floor),
+      gender: String(formData.get("gender") || ""),
+      balcony: String(formData.get("balcony") || ""),
+      division: String(formData.get("division") || division),
+      district: String(formData.get("district") || district),
+      area: String(formData.get("area") || area),
+      sectorNo: String(formData.get("sectorNo") || ""),
+      roadNo: String(formData.get("roadNo") || ""),
+      houseNo: String(formData.get("houseNo") || ""),
+      shortAddress: String(formData.get("shortAddress") || "").trim(),
+      description: String(formData.get("description") || "").trim(),
+      features: facilities,
+      images: uploadedImages,
+      image: uploadedImages[0] || "/2 Bedroom.png",
+      owner: {
+        name: currentOwner.fullName,
+        phone: currentOwner.phone,
+        email: currentOwner.email,
+      },
+      createdAt: editingProperty?.createdAt,
+      raw: Object.fromEntries(formData.entries()),
+    });
+
+    setStatusMessage(
+      `${property.title} ${isEditing ? "updated" : "saved"} successfully.`,
+    );
+    navigate("/owner-dashboard");
+  };
+
+  const handleDelete = () => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${editingProperty?.title}"? This action cannot be undone.`,
+      )
+    ) {
+      deleteProperty(editingProperty.id);
+      navigate("/owner-dashboard");
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <p className="text-sm text-gray-500">Posts &gt; Create</p>
-        <h1 className="text-3xl font-bold text-black mt-1">Create Post</h1>
+        <p className="text-sm text-gray-500">
+          Posts &gt; {isEditing ? "Edit" : "Create"}
+        </p>
+        <h1 className="text-3xl font-bold text-black mt-1">
+          {isEditing ? "Edit Post" : "Create Post"}
+        </h1>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-600 mb-4">
         নতুন ভাড়াটিয়া পাওয়ার জন্য পোস্টটি যত বেশি তথ্যপূর্ণ হবে তত ভালো হবে।
       </div>
 
-      <form className="space-y-4">
+      <form
+        key={editingProperty?.id || "new-property"}
+        className="space-y-4"
+        onSubmit={handleSubmit}
+      >
         <section className={sectionClass}>
           <h2 className="text-base font-semibold text-black mb-4">
             Basic Information
           </h2>
+          <div className="mb-4">
+            <label className="text-sm font-medium text-black mb-1 block">
+              Property Title*
+            </label>
+            <input
+              name="title"
+              className={textInputClass}
+              placeholder="e.g. Spacious 3 Bedroom Family Flat"
+              defaultValue={editingProperty?.title || ""}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Month*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="month"
+                className={selectInputClass}
+                defaultValue={editingProperty?.month || ""}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
                 <option>January</option>
                 <option>February</option>
                 <option>March</option>
+                <option>April</option>
+                <option>May</option>
+                <option>June</option>
+                <option>July</option>
+                <option>August</option>
+                <option>September</option>
+                <option>October</option>
+                <option>November</option>
+                <option>December</option>
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Category*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="category"
+                className={selectInputClass}
+                defaultValue={editingProperty?.type || ""}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
                 <option>Flat</option>
                 <option>Room</option>
                 <option>Sublet</option>
+                <option>Shop</option>
+                <option>Hostel</option>
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Property Type*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="propertyType"
+                className={selectInputClass}
+                defaultValue={editingProperty?.category || ""}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
                 <option>Family</option>
                 <option>Bachelor</option>
                 <option>Office</option>
+                <option>Sublet</option>
+                <option>Hostel</option>
+                <option>Shop</option>
               </select>
             </div>
 
@@ -70,33 +311,48 @@ const AddProperty = () => {
               <label className="text-sm font-medium text-black mb-1 block">
                 Bedroom*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="bedrooms"
+                className={selectInputClass}
+                defaultValue={String(editingProperty?.beds ?? "")}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>
+                <option>4</option>
+                <option>5</option>
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Bathroom*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="bathrooms"
+                className={selectInputClass}
+                defaultValue={String(editingProperty?.baths ?? "")}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>
+                <option>4</option>
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Balcony
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="balcony"
+                className={selectInputClass}
+                defaultValue={editingProperty?.balcony || ""}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
@@ -109,20 +365,29 @@ const AddProperty = () => {
               <label className="text-sm font-medium text-black mb-1 block">
                 Floor
               </label>
-              <select className={selectInputClass} defaultValue="">
-                <option value="" disabled>
-                  Select an option
-                </option>
-                <option>Ground</option>
-                <option>1st</option>
-                <option>2nd</option>
-              </select>
+              <input
+                name="floor"
+                className={textInputClass}
+                list="owner-floor-options"
+                value={floor}
+                onChange={(event) => setFloor(event.target.value)}
+                placeholder="Ground / 1st / 2nd / 5th"
+              />
+              <datalist id="owner-floor-options">
+                {floorOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Gender
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="gender"
+                className={selectInputClass}
+                defaultValue={editingProperty?.gender || ""}
+              >
                 <option value="" disabled>
                   Select an option
                 </option>
@@ -135,7 +400,12 @@ const AddProperty = () => {
               <label className="text-sm font-medium text-black mb-1 block">
                 Size (Square Feet)
               </label>
-              <input className={textInputClass} placeholder="e.g. 1200" />
+              <input
+                name="sqft"
+                className={textInputClass}
+                placeholder="e.g. 1200"
+                defaultValue={editingProperty?.sqft || ""}
+              />
             </div>
           </div>
         </section>
@@ -149,59 +419,101 @@ const AddProperty = () => {
               <label className="text-sm font-medium text-black mb-1 block">
                 Division*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="division"
+                className={selectInputClass}
+                value={division}
+                onChange={handleDivisionChange}
+              >
                 <option value="" disabled>
-                  Select an option
+                  Select division
                 </option>
-                <option>Dhaka</option>
-                <option>Chittagong</option>
-                <option>Rajshahi</option>
+                {BD_DIVISIONS.map((divisionName) => (
+                  <option key={divisionName} value={divisionName}>
+                    {divisionName}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 District*
               </label>
-              <select className={selectInputClass} defaultValue="">
+              <select
+                name="district"
+                className={selectInputClass}
+                value={district}
+                onChange={handleDistrictChange}
+                disabled={!isDivisionSelected}
+              >
                 <option value="" disabled>
-                  Select an option
+                  {isDivisionSelected
+                    ? "Select district"
+                    : "Select division first"}
                 </option>
-                <option>Dhaka</option>
-                <option>Gazipur</option>
-                <option>Narayanganj</option>
+                {districtOptions.map((districtName) => (
+                  <option key={districtName} value={districtName}>
+                    {districtName}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
-                Area*
+                Area / Thana*
               </label>
-              <select className={selectInputClass} defaultValue="">
-                <option value="" disabled>
-                  Select an option
-                </option>
-                <option>Uttara</option>
-                <option>Mirpur</option>
-                <option>Bashundhara</option>
-              </select>
+              <input
+                name="area"
+                className={textInputClass}
+                list="owner-area-options"
+                value={area}
+                onChange={(event) => setArea(event.target.value)}
+                placeholder={
+                  isDistrictSelected
+                    ? "Type or select area / thana"
+                    : "Select district first"
+                }
+                disabled={!isDistrictSelected}
+              />
+              <datalist id="owner-area-options">
+                {areaOptions.map((areaName) => (
+                  <option key={areaName} value={areaName} />
+                ))}
+              </datalist>
             </div>
 
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Sector no
               </label>
-              <input className={textInputClass} placeholder="e.g. Sector 12" />
+              <input
+                name="sectorNo"
+                className={textInputClass}
+                placeholder="e.g. Sector 12"
+                defaultValue={editingProperty?.sectorNo || ""}
+              />
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 Road no
               </label>
-              <input className={textInputClass} placeholder="e.g. Road 07" />
+              <input
+                name="roadNo"
+                className={textInputClass}
+                placeholder="e.g. Road 07"
+                defaultValue={editingProperty?.roadNo || ""}
+              />
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
                 House no
               </label>
-              <input className={textInputClass} placeholder="e.g. House 21" />
+              <input
+                name="houseNo"
+                className={textInputClass}
+                placeholder="e.g. House 21"
+                defaultValue={editingProperty?.houseNo || ""}
+              />
             </div>
           </div>
 
@@ -210,8 +522,10 @@ const AddProperty = () => {
               Short Address*
             </label>
             <input
+              name="shortAddress"
               className={textInputClass}
               placeholder="Write short address"
+              defaultValue={editingProperty?.shortAddress || ""}
             />
           </div>
         </section>
@@ -225,8 +539,10 @@ const AddProperty = () => {
               Property Details
             </label>
             <textarea
+              name="description"
               className={`${textInputClass} min-h-28 resize-y`}
               placeholder="Address and contact number can be provided here"
+              defaultValue={editingProperty?.description || ""}
             />
           </div>
 
@@ -234,10 +550,42 @@ const AddProperty = () => {
             <label className="text-sm font-medium text-black mb-1 block">
               Images
             </label>
-            <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+            <label className="block cursor-pointer rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 hover:border-black hover:text-black transition">
+              <input
+                key={imageInputKey}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageUpload}
+              />
               Drag & Drop your files or{" "}
               <span className="text-blue-600">Browse</span>
-            </div>
+            </label>
+
+            {uploadedImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {uploadedImages.map((image, index) => (
+                  <div
+                    key={`${image.slice(0, 24)}-${index}`}
+                    className="relative overflow-hidden rounded-lg border border-gray-200"
+                  >
+                    <img
+                      src={image}
+                      alt={`Uploaded ${index + 1}`}
+                      className="h-28 w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -256,7 +604,13 @@ const AddProperty = () => {
               "Furnished Home",
             ].map((facility) => (
               <label key={facility} className="flex items-center gap-2">
-                <input type="checkbox" className="accent-black" />
+                <input
+                  type="checkbox"
+                  name="facilities"
+                  value={facility}
+                  defaultChecked={editingProperty?.features?.includes(facility)}
+                  className="accent-black"
+                />
                 {facility}
               </label>
             ))}
@@ -272,8 +626,10 @@ const AddProperty = () => {
               </label>
               <div className="flex">
                 <input
+                  name="price"
                   className={`${textInputClass} rounded-r-none`}
                   placeholder="e.g. 25000"
+                  defaultValue={editingProperty?.price || ""}
                 />
                 <span className="inline-flex items-center border border-l-0 border-gray-300 px-3 rounded-r-lg text-sm text-gray-600">
                   BDT
@@ -284,7 +640,11 @@ const AddProperty = () => {
               <label className="text-sm font-medium text-black mb-1 block">
                 Price Type
               </label>
-              <select className={selectInputClass} defaultValue="Monthly">
+              <select
+                name="priceType"
+                className={selectInputClass}
+                defaultValue={editingProperty?.priceType || "Monthly"}
+              >
                 <option>Monthly</option>
                 <option>Yearly</option>
               </select>
@@ -314,10 +674,10 @@ const AddProperty = () => {
 
         <div className="flex items-center gap-3">
           <button
-            type="button"
+            type="submit"
             className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
           >
-            Create
+            {isEditing ? "Update" : "Create"}
           </button>
           <Link
             to="/owner-dashboard"
@@ -325,7 +685,19 @@ const AddProperty = () => {
           >
             Cancel
           </Link>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 ml-auto"
+            >
+              Delete
+            </button>
+          )}
         </div>
+        {statusMessage ? (
+          <p className="text-sm text-green-600">{statusMessage}</p>
+        ) : null}
       </form>
     </div>
   );
