@@ -1,6 +1,6 @@
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../utils/memberStorage";
 import { HOME_FEATURED_PROPERTIES } from "../../utils/propertyCatalog";
 import { getStoredProperties } from "../../utils/propertyStorage";
@@ -47,7 +47,12 @@ const Product = ({ selectedCategory = "All" }) => {
     navigate(`/property/${propertyId}`);
   };
 
+  const location = useLocation();
   const featuredProperties = HOME_FEATURED_PROPERTIES;
+
+  // Read optional division query param from URL
+  const params = new URLSearchParams(location.search);
+  const divisionFilter = params.get("division") || null;
 
   const savedPropertyCards = savedProperties.map((property) => ({
     id: property.id,
@@ -79,12 +84,21 @@ const Product = ({ selectedCategory = "All" }) => {
   ];
 
   // Filter properties based on selected category, then slice to show max 10
-  const filteredProperties =
+  let filteredProperties =
     selectedCategory === "All"
       ? allProperties
       : allProperties.filter(
           (property) => property.category === selectedCategory,
         );
+
+  // If division filter is present, only include properties where owner set `division`
+  if (divisionFilter) {
+    filteredProperties = filteredProperties.filter(
+      (property) =>
+        String(property.division).toLowerCase() ===
+        String(divisionFilter).toLowerCase(),
+    );
+  }
 
   const displayedProperties = filteredProperties.slice(0, 10);
 
@@ -193,7 +207,11 @@ const Product = ({ selectedCategory = "All" }) => {
             </div>
           ))
         ) : (
-          <p className="text-center col-span-full">No properties found.</p>
+          <p className="text-center col-span-full">
+            {divisionFilter
+              ? "No houses or tenants found in this division."
+              : "No properties found."}
+          </p>
         )}
       </div>
 

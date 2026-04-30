@@ -49,7 +49,7 @@ const Dashboard = () => {
             <p className="text-black text-sm mb-1">Saved Houses</p>
             <h2 className="text-3xl font-bold text-black">{savedCount}</h2>
           </div>
-          <div className="bg-blue-50 p-3 rounded-xl text-blue-500">
+          <div className="bg-blue-50 p-3 rounded-xl text-black">
             <Heart size={24} />
           </div>
         </Link>
@@ -104,7 +104,7 @@ const Dashboard = () => {
               </p>
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
-                <div className="text-blue-600 font-bold flex items-center gap-2">
+                <div className="text-black font-bold flex items-center gap-2">
                   ৳{house.price}{" "}
                   <span className="text-sm text-gray-500 font-normal">
                     /month
@@ -128,7 +128,7 @@ const Dashboard = () => {
 
         <div className="space-y-6">
           <div className="flex items-start gap-4">
-            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0"></div>
+            <div className="w-2 h-2 mt-2 rounded-full bg-black shrink-0"></div>
             <div>
               <p className="text-gray-600 text-sm">
                 <span className="font-semibold text-gray-800">
@@ -143,7 +143,7 @@ const Dashboard = () => {
           <div className="w-full h-px bg-gray-100 ml-6"></div>
 
           <div className="flex items-start gap-4">
-            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0"></div>
+            <div className="w-2 h-2 mt-2 rounded-full bg-black shrink-0"></div>
             <div>
               <p className="text-gray-600 text-sm">
                 <span className="font-semibold text-gray-800">
@@ -158,7 +158,7 @@ const Dashboard = () => {
           <div className="w-full h-px bg-gray-100 ml-6"></div>
 
           <div className="flex items-start gap-4">
-            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0"></div>
+            <div className="w-2 h-2 mt-2 rounded-full bg-black shrink-0"></div>
             <div>
               <p className="text-gray-600 text-sm">
                 <span className="font-semibold text-gray-800">
@@ -173,7 +173,7 @@ const Dashboard = () => {
           <div className="w-full h-px bg-gray-100 ml-6"></div>
 
           <div className="flex items-start gap-4">
-            <div className="w-2 h-2 mt-2 rounded-full bg-blue-600 shrink-0"></div>
+            <div className="w-2 h-2 mt-2 rounded-full bg-black shrink-0"></div>
             <div>
               <p className="text-gray-600 text-sm">
                 <span className="font-semibold text-gray-800">

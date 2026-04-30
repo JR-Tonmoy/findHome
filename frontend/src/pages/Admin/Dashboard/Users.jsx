@@ -1,10 +1,26 @@
-import { Filter, Mail, Plus, Search, Users as UsersIcon } from "lucide-react";
+import {
+  Filter,
+  Mail,
+  Plus,
+  Search,
+  Trash2,
+  Users as UsersIcon,
+} from "lucide-react";
+import { useState } from "react";
 import { normalizeMemberRecord } from "../../../utils/memberStorage";
 
 const Users = () => {
-  const registeredUsers = JSON.parse(
-    localStorage.getItem("registeredUsers") || "[]",
-  ).map(normalizeMemberRecord);
+  const [registeredUsers, setRegisteredUsers] = useState(
+    JSON.parse(localStorage.getItem("registeredUsers") || "[]").map(
+      normalizeMemberRecord,
+    ),
+  );
+
+  const handleRemoveUser = (index) => {
+    const updatedUsers = registeredUsers.filter((_, i) => i !== index);
+    setRegisteredUsers(updatedUsers);
+    localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
+  };
 
   const stats = [
     {
@@ -29,8 +45,6 @@ const Users = () => {
       gradient: "bg-linear-to-r from-pink-50 to-rose-50",
     },
   ];
-
-  const usersList = registeredUsers;
 
   return (
     <div className="p-6 bg-[#f4f7fe] min-h-[calc(100vh-80px)]">
@@ -131,23 +145,24 @@ const Users = () => {
                 <th className="px-6 py-4">User Name</th>
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">Registered Date</th>
+                <th className="px-6 py-4">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white">
-              {usersList.length === 0 ? (
+              {registeredUsers.length === 0 ? (
                 <tr>
                   <td
                     className="px-6 py-8 text-center text-gray-500"
-                    colSpan={4}
+                    colSpan={5}
                   >
                     No user registration found yet.
                   </td>
                 </tr>
               ) : (
-                usersList.map((user, index) => (
+                registeredUsers.map((user, index) => (
                   <tr
                     key={user.id || `${user.email}-${index}`}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
+                    className="border-b border-gray-50 hover:bg-gray-50/50 transition"
                   >
                     <td className="px-6 py-4 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-100 flex items-center justify-center shrink-0">
@@ -178,6 +193,16 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4 text-[13px] text-gray-500 font-medium whitespace-nowrap">
                       {user.date}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleRemoveUser(index)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium"
+                        title="Remove user"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))

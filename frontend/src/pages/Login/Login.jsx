@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginSuccess } from "../../features/auth/authSlice";
+import { normalizeMemberRecord } from "../../utils/memberStorage";
 
 const Login = () => {
   // const [login, { isLoading }] = useLoginMutation();
@@ -18,8 +19,6 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ২। একটি ডেমো স্টেট নিচ্ছি রোল সিলেক্ট করার জন্য যেহেতু এখন API যুক্ত নেই (For demo purpose, using a state to hold selected role)
-  const [role, setRole] = useState("tenant");
   const [showPassword, setShowPassword] = useState(false);
 
   // ৩। ফর্ম সাবমিট করার ফাংশন
@@ -27,42 +26,72 @@ const Login = () => {
     e.preventDefault(); // পেজ রিলোড বন্ধ করার জন্য
 
     const formData = new FormData(e.target);
-    const email = formData.get("email");
+    const email = String(formData.get("email") || "")
+      .trim()
+      .toLowerCase();
     const password = formData.get("password");
 
-    const demoUserStr = localStorage.getItem("demoRegisteredUser");
-    if (!demoUserStr) {
-      alert("No registered user found. Please register first!");
+    // Admin account (hardcoded)
+    const adminAccount = {
+      id: "#admin",
+      fullName: "Tanim Hasan",
+      name: "Tanim Hasan",
+      email: "admin@findhome.com",
+      phone: "+880 1712-345678",
+      password: "admin123",
+      role: "admin",
+      avatar: "",
+    };
+
+    const registeredUsers = JSON.parse(
+      localStorage.getItem("registeredUsers") || "[]",
+    ).map(normalizeMemberRecord);
+    const registeredOwners = JSON.parse(
+      localStorage.getItem("registeredOwners") || "[]",
+    ).map(normalizeMemberRecord);
+    const demoUser = JSON.parse(
+      localStorage.getItem("demoRegisteredUser") || "{}",
+    );
+
+    const candidates = [
+      adminAccount,
+      ...registeredOwners.map((member) => ({ ...member, role: "owner" })),
+      ...registeredUsers.map((member) => ({ ...member, role: "tenant" })),
+      demoUser.email ? demoUser : null,
+    ].filter(Boolean);
+
+    const matchedUser = candidates.find(
+      (member) =>
+        String(member.email || "")
+          .trim()
+          .toLowerCase() === email,
+    );
+
+    if (!matchedUser) {
+      alert("No account found with this email. Please register first!");
       navigate("/register", { state: { from: location.state?.from } });
       return;
     }
 
-    const demoUser = JSON.parse(demoUserStr);
-
-    if (demoUser.email !== email) {
-      alert("This email is WRONG. Please correct it.");
-      return;
-    }
-    if (demoUser.password !== password) {
+    if (matchedUser.password !== password) {
       alert("This password is WRONG. Please correct it.");
       return;
     }
-    if (demoUser.role !== role) {
-      alert(
-        `This role is WRONG. You registered as ${demoUser.role === "owner" ? "Property Owner" : "Tenant"}. Please correct it.`,
-      );
-      return;
-    }
 
-    // Set demo authenticated state for Home page to check
     const currentUser = {
-      ...demoUser,
-      role,
+      ...matchedUser,
+      role: matchedUser.role || "tenant",
     };
 
     dispatch(loginSuccess({ user: currentUser, token: `demo-${Date.now()}` }));
 
-    const redirectPath = location.state?.from || "/home";
+    // Redirect to appropriate dashboard based on role
+    let redirectPath = location.state?.from?.pathname || "/home";
+    if (currentUser.role === "admin") {
+      redirectPath = "/admin/dashboard";
+    } else if (currentUser.role === "owner") {
+      redirectPath = "/owner-dashboard";
+    }
     navigate(redirectPath);
   };
 
@@ -79,12 +108,7 @@ const Login = () => {
           </h2>
           <div className="mt-2 text-center flex flex-col items-center">
             <span className="text-sm text-gray-600 mb-1">Login to your</span>
-            <div className="flex items-center gap-2">
-              <div className="bg-black text-white p-1 rounded-lg text-xs">
-                🏠
-              </div>
-              <span className="font-bold text-black text-xl">BashaLagbe</span>
-            </div>
+            <span className="font-bold text-black text-xl">BashaLagbe</span>
             <span className="text-[10px] text-gray-500 font-medium mt-0.5">
               Find your perfect flat easily
             </span>
@@ -128,22 +152,6 @@ const Login = () => {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-            </div>
-
-            {/* ডেমো লগিন এর জন্য রোল সিলেক্ট করার অপশন নিচে দেওয়া হলো 
-                (যাতে আপনি সহজেই টেস্ট করে দেখতে পারেন) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Login As (Role Selection Demo)
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black sm:text-sm"
-              >
-                <option value="tenant">Tenant (ভাড়াটিয়া)</option>
-                <option value="owner">Property Owner (বাড়ির মালিক)</option>
-              </select>
             </div>
           </div>
 

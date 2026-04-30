@@ -99,7 +99,9 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
             {/* Make BashaLagbe click-able to navigate to Home Page */}
             <Link to="/home" className="flex flex-col">
               <div className="flex items-center gap-2 text-black text-xl font-bold hover:opacity-90">
-                <div className="bg-black text-white p-1 rounded-lg">🏠</div>
+                <div className="bg-black p-1 rounded-lg flex items-center justify-center w-8 h-8">
+                  <Home size={20} className="text-orange-400" />
+                </div>
                 BashaLagbe
               </div>
               <span className="text-gray-600 text-[10px] font-medium mt-0.5">
@@ -138,7 +140,7 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
                 </p>
               </div>
             </div>
-            <div className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+            <div className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-black">
               {roleLabel}
             </div>
           </div>

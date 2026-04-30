@@ -66,6 +66,7 @@ const Register = () => {
       name: fullName,
       email,
       phone,
+      password,
       username: `@${String(fullName).trim().toLowerCase().replace(/\s+/g, "")}`,
       author: "Yes",
       accountStatus: "Active",

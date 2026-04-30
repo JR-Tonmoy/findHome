@@ -8,6 +8,16 @@ const Unauthorized = () => {
   const { user } = useAuth();
 
   const handleGoHome = () => {
+    if (user?.role === "admin") {
+      navigate("/admin/dashboard");
+      return;
+    }
+
+    if (user?.role === "owner") {
+      navigate("/owner-dashboard");
+      return;
+    }
+
     navigate("/dashboard");
   };
 

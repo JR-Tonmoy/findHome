@@ -46,6 +46,17 @@ export const getNavigationItemsByRole = (userRole) => {
 export const hasAccessToRoute = (route, userRole) => {
   if (!userRole) return false;
 
+  // Prefix-based checks for dashboard namespaces.
+  if (userRole === "admin" && route.startsWith("/admin")) {
+    return true;
+  }
+  if (userRole === "owner" && route.startsWith("/owner-dashboard")) {
+    return true;
+  }
+  if (userRole === "tenant" && route.startsWith("/dashboard")) {
+    return true;
+  }
+
   const navigationItems = getNavigationItemsByRole(userRole);
   return navigationItems.some((item) => {
     if (item.href === route) return true;

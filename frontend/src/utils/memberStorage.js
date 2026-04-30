@@ -27,6 +27,8 @@ const normalizeMemberRecord = (member = {}) => ({
   name: getDisplayName(member),
   email: member.email || "N/A",
   phone: member.phone || "N/A",
+  password: member.password || "",
+  role: member.role || "tenant",
   username: getUsername(member),
   date: member.date || member.registeredDate || "N/A",
   avatar: member.avatar || "",

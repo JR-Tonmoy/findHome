@@ -140,7 +140,7 @@ const Navbar = () => {
               {dropdownOpen && (
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 shadow-lg rounded-lg py-2 z-50 overflow-hidden">
                   <Link
-                    to="/property"
+                    to="/home"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
@@ -148,56 +148,56 @@ const Navbar = () => {
                     All property
                   </Link>
                   <Link
-                    to="/property?division=Barishal"
+                    to="/home?division=Barishal"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Barishal division
                   </Link>
                   <Link
-                    to="/property?division=Chittagong"
+                    to="/home?division=Chittagong"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Chittagong division
                   </Link>
                   <Link
-                    to="/property?division=Dhaka"
+                    to="/home?division=Dhaka"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Dhaka division
                   </Link>
                   <Link
-                    to="/property?division=Khulna"
+                    to="/home?division=Khulna"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Khulna division
                   </Link>
                   <Link
-                    to="/property?division=Mymensingh"
+                    to="/home?division=Mymensingh"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Mymensingh division
                   </Link>
                   <Link
-                    to="/property?division=Rajshahi"
+                    to="/home?division=Rajshahi"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Rajshahi division
                   </Link>
                   <Link
-                    to="/property?division=Rangpur"
+                    to="/home?division=Rangpur"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Rangpur division
                   </Link>
                   <Link
-                    to="/property?division=Sylhet"
+                    to="/home?division=Sylhet"
                     className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >

@@ -1,10 +1,19 @@
-import { Building, Search, Users } from "lucide-react";
+import { Building, Search, Trash2, Users } from "lucide-react";
+import { useState } from "react";
 import { normalizeMemberRecord } from "../../../utils/memberStorage";
 
 const Owner = () => {
-  const registeredOwners = JSON.parse(
-    localStorage.getItem("registeredOwners") || "[]",
-  ).map(normalizeMemberRecord);
+  const [registeredOwners, setRegisteredOwners] = useState(
+    JSON.parse(localStorage.getItem("registeredOwners") || "[]").map(
+      normalizeMemberRecord,
+    ),
+  );
+
+  const handleRemoveOwner = (index) => {
+    const updatedOwners = registeredOwners.filter((_, i) => i !== index);
+    setRegisteredOwners(updatedOwners);
+    localStorage.setItem("registeredOwners", JSON.stringify(updatedOwners));
+  };
 
   return (
     <div className="p-6 bg-[#f4f7fe] min-h-[calc(100vh-80px)]">
@@ -43,6 +52,7 @@ const Owner = () => {
                 <th className="px-6 py-4">User Name</th>
                 <th className="px-6 py-4">Email</th>
                 <th className="px-6 py-4">Registered Date</th>
+                <th className="px-6 py-4">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -50,7 +60,7 @@ const Owner = () => {
                 <tr>
                   <td
                     className="px-6 py-8 text-center text-gray-500"
-                    colSpan={4}
+                    colSpan={5}
                   >
                     No owner registration found yet.
                   </td>
@@ -59,7 +69,7 @@ const Owner = () => {
                 registeredOwners.map((owner, index) => (
                   <tr
                     key={owner.id || `${owner.email}-${index}`}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition cursor-pointer"
+                    className="border-b border-gray-50 hover:bg-gray-50/50 transition"
                   >
                     <td className="px-6 py-4 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-100 flex items-center justify-center shrink-0">
@@ -90,6 +100,16 @@ const Owner = () => {
                     </td>
                     <td className="px-6 py-4 text-[13px] text-gray-500 font-medium whitespace-nowrap">
                       {owner.date}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleRemoveOwner(index)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium"
+                        title="Remove owner"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))

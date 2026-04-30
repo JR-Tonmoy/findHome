@@ -30,7 +30,14 @@ import RoleProtected from "./RoleProtected";
 // import Sidebar from "../pages/User/Sidebar/Sidebar";
 
 const Routers = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  const defaultAuthenticatedRoute =
+    user?.role === "admin"
+      ? "/admin/dashboard"
+      : user?.role === "owner"
+        ? "/owner-dashboard"
+        : "/dashboard";
 
   return (
     <Routes>
@@ -38,7 +45,11 @@ const Routers = () => {
       <Route
         path="/login"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+          isAuthenticated ? (
+            <Navigate to={defaultAuthenticatedRoute} replace />
+          ) : (
+            <Login />
+          )
         }
       />
       <Route path="/home" element={<Home />} />
@@ -52,11 +63,12 @@ const Routers = () => {
       <Route
         path="/admin"
         element={
-          <Protected>
+          <RoleProtected requiredRoles={["admin"]}>
             <AdminLayout />
-          </Protected>
+          </RoleProtected>
         }
       >
+        <Route index element={<Navigate to="dashboard" replace />} />
         {/* /admin/dashboard */}
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="profile" element={<AdminProfile />} />
@@ -140,7 +152,10 @@ const Routers = () => {
       <Route
         path="/"
         element={
-          <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />
+          <Navigate
+            to={isAuthenticated ? defaultAuthenticatedRoute : "/login"}
+            replace
+          />
         }
       />
 

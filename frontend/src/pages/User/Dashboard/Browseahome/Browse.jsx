@@ -57,19 +57,19 @@ const Browse = () => {
         <input
           type="text"
           placeholder="Search location..."
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
         <input
           type="text"
           placeholder="Property Type"
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
         <input
           type="number"
           placeholder="Max Price (BDT)"
           className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
+        <button className="w-full md:w-auto px-6 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black flex items-center justify-center gap-2">
           <Filter size={18} /> Apply Filters
         </button>
       </div>
@@ -130,18 +130,18 @@ const Browse = () => {
               <div className="flex items-center gap-3 mb-4">
                 {property.beds > 0 && (
                   <div className="flex items-center text-sm text-gray-600">
-                    <BedDouble size={16} className="mr-1 text-blue-500" />
+                    <BedDouble size={16} className="mr-1 text-black" />
                     {property.beds} Bed
                   </div>
                 )}
-                <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded">
+                <span className="px-2 py-1 bg-gray-100 text-black text-xs font-semibold rounded">
                   {property.type}
                 </span>
               </div>
 
               {/* Price & Action */}
               <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-                <div className="text-blue-600 font-bold text-lg flex items-center">
+                <div className="text-black font-bold text-lg flex items-center">
                   ৳ {property.price}
                   <span className="text-gray-400 text-sm font-normal ml-1">
                     /month
@@ -149,7 +149,7 @@ const Browse = () => {
                 </div>
                 <Link
                   to={`/property/${property.id}`}
-                  className="text-blue-600 text-sm font-semibold hover:underline"
+                  className="text-black text-sm font-semibold hover:underline"
                 >
                   View Details
                 </Link>
