@@ -47,7 +47,7 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
       >
         {/* Brand Logo */}
         <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
-          <Link to="/" className="flex flex-col hover:opacity-90">
+          <Link to="/home" className="flex flex-col hover:opacity-90">
             <div className="flex items-center gap-2 text-black text-lg font-extrabold tracking-tight">
               <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-sm shrink-0">
                 <Home size={20} className="text-orange-400" />

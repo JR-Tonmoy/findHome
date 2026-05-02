@@ -17,6 +17,7 @@ const Navbar = () => {
   const userRole = (user?.role || storedRole).toLowerCase();
   const isOwner = userRole === "owner" || userRole === "property owner";
   const isAdmin = userRole === "admin";
+  const canAddProperty = isOwner || isAdmin;
   const displayName = user?.fullName || user?.name || user?.email || "";
   const displayInitial = displayName.trim().charAt(0).toUpperCase() || "U";
 
@@ -58,7 +59,7 @@ const Navbar = () => {
 
         {/* Right Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full md:w-auto">
-          {isOwner && (
+          {canAddProperty && (
             <button
               className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black flex-1 md:flex-none justify-center transition"
               onClick={() => {
