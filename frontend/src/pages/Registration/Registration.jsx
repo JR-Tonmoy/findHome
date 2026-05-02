@@ -1,21 +1,28 @@
-// import { toast } from "react-hot-toast";
-// import { useNavigate } from "react-router-dom";
-// import { useRegisterMutation } from "../../features/auth/authSlice";
-
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  loginSuccess,
+  useRegisterMutation,
+} from "../../features/auth/authSlice";
+import { normalizeMemberRecord } from "../../utils/memberStorage";
 
 const Register = () => {
-  // const [registerUser, { isLoading }] = useRegisterMutation();
+  const [registerUser, { isLoading }] = useRegisterMutation();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  const handleDemoRegister = (e) => {
+  const handleDemoRegister = async (e) => {
     e.preventDefault();
+    setFormError("");
+    const toastId = toast.loading("Creating account...");
     const formData = new FormData(e.target);
     const fullName = formData.get("fullName");
     const email = formData.get("email");
@@ -25,20 +32,34 @@ const Register = () => {
     const role = formData.get("role");
 
     if (!/^01[0-9]{9}$/.test(phone)) {
-      alert(
-        "Please enter a valid 11-digit Bangladeshi phone number starting with 01.",
-      );
+      const message =
+        "Please enter a valid 11-digit Bangladeshi phone number starting with 01.";
+      setFormError(message);
+      toast.error(message, { id: toastId });
       return;
     }
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
-      alert("Please enter a valid email format.");
+      const message = "Please enter a valid email format.";
+      setFormError(message);
+      toast.error(message, { id: toastId });
       return;
     }
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      const message = "Passwords do not match!";
+      setFormError(message);
+      toast.error(message, { id: toastId });
       return;
     }
+
+    const payload = {
+      name: fullName,
+      email,
+      phone,
+      role,
+      password,
+      password_confirmation: confirmPassword,
+    };
 
     const registeredDate = new Date().toLocaleDateString("en-US", {
       year: "numeric",
@@ -46,51 +67,74 @@ const Register = () => {
       day: "numeric",
     });
 
-    // Save registered user details in local storage to use in login
-    localStorage.setItem(
-      "demoRegisteredUser",
-      JSON.stringify({
-        fullName,
-        email,
-        phone,
-        password,
-        role,
+    try {
+      const response = await registerUser(payload).unwrap();
+      const apiUser = response?.data?.user || {};
+      const apiToken = response?.data?.token || "";
+
+      const normalizedUser = {
+        ...apiUser,
+        fullName: apiUser.name || fullName,
+        name: apiUser.name || fullName,
+        email: apiUser.email || email,
+        phone: apiUser.phone || phone,
+        role: apiUser.role || role,
         date: registeredDate,
-        avatar: "",
-      }),
-    );
+        avatar: apiUser.avatar || "",
+      };
 
-    const memberRecord = {
-      id: `#${Date.now()}`,
-      fullName,
-      name: fullName,
-      email,
-      phone,
-      password,
-      username: `@${String(fullName).trim().toLowerCase().replace(/\s+/g, "")}`,
-      author: "Yes",
-      accountStatus: "Active",
-      kycStatus: "Unverified",
-      emailStatus: "Unverified",
-      date: registeredDate,
-      avatar: "",
-      role,
-    };
+      dispatch(loginSuccess({ user: normalizedUser, token: apiToken }));
 
-    if (role === "owner") {
-      const owners = JSON.parse(
-        localStorage.getItem("registeredOwners") || "[]",
+      // Keep the existing localStorage-backed login/dashboard flow working.
+      localStorage.setItem(
+        "demoRegisteredUser",
+        JSON.stringify(normalizedUser),
       );
-      owners.unshift(memberRecord);
-      localStorage.setItem("registeredOwners", JSON.stringify(owners));
-    } else {
-      const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-      users.unshift(memberRecord);
-      localStorage.setItem("registeredUsers", JSON.stringify(users));
-    }
 
-    alert("Registration successful! Please login.");
-    navigate("/login", { state: { from: location.state?.from } });
+      const memberRecord = normalizeMemberRecord({
+        id: apiUser.id || `#${Date.now()}`,
+        fullName: normalizedUser.fullName,
+        name: normalizedUser.name,
+        email: normalizedUser.email,
+        phone: normalizedUser.phone,
+        password,
+        username: `@${String(fullName).trim().toLowerCase().replace(/\s+/g, "")}`,
+        author: "Yes",
+        accountStatus: "Active",
+        kycStatus: "Unverified",
+        emailStatus: "Unverified",
+        date: registeredDate,
+        avatar: normalizedUser.avatar,
+        role: normalizedUser.role,
+      });
+
+      if (role === "owner") {
+        const owners = JSON.parse(
+          localStorage.getItem("registeredOwners") || "[]",
+        );
+        owners.unshift(memberRecord);
+        localStorage.setItem("registeredOwners", JSON.stringify(owners));
+      } else {
+        const users = JSON.parse(
+          localStorage.getItem("registeredUsers") || "[]",
+        );
+        users.unshift(memberRecord);
+        localStorage.setItem("registeredUsers", JSON.stringify(users));
+      }
+
+      toast.success("Registration successful!", { id: toastId });
+      navigate("/login", { state: { from: location.state?.from } });
+    } catch (error) {
+      const validationErrors = error?.data?.errors
+        ? Object.values(error.data.errors).flat().filter(Boolean)
+        : [];
+      const errorMessage =
+        validationErrors[0] ||
+        error?.data?.message ||
+        "Registration failed. Please try again.";
+      setFormError(errorMessage);
+      toast.error(errorMessage, { id: toastId });
+    }
   };
 
   // const onSubmit = async (data) => {
@@ -142,6 +186,12 @@ const Register = () => {
 
         {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleDemoRegister}>
+          {formError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {formError}
+            </div>
+          ) : null}
+
           <div className="space-y-4">
             {/* Full Name */}
             <div>
@@ -203,6 +253,7 @@ const Register = () => {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
+                  minLength="8"
                   placeholder="Create a password"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm pr-10"
                 />
@@ -226,6 +277,7 @@ const Register = () => {
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   required
+                  minLength="8"
                   placeholder="Re-enter your password"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm pr-10"
                 />
@@ -278,9 +330,10 @@ const Register = () => {
           <div>
             <button
               type="submit"
+              disabled={isLoading}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
             >
-              Register
+              {isLoading ? "Registering..." : "Register"}
             </button>
           </div>
 

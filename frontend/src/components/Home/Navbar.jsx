@@ -11,6 +11,7 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchValue, setSearchValue] = useState("");
   const { user, isAuthenticated } = useAuth();
 
   const storedRole = localStorage.getItem("userRole") || "";
@@ -234,10 +235,31 @@ const Navbar = () => {
         <div className="relative w-full md:w-64 mt-2 md:mt-0">
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search by location"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const params = new URLSearchParams(location.search);
+                if (searchValue) params.set("search", searchValue);
+                else params.delete("search");
+                navigate(`${location.pathname}?${params.toString()}`);
+              }
+            }}
             className="w-full pl-4 pr-10 py-2 border border-black rounded-lg text-sm outline-none focus:border-black"
           />
-          <span className="absolute right-3 top-2.5 text-black">🔍</span>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams(location.search);
+              if (searchValue) params.set("search", searchValue);
+              else params.delete("search");
+              navigate(`${location.pathname}?${params.toString()}`);
+            }}
+            className="absolute right-3 top-2.5 text-black"
+            aria-label="Search"
+          >
+            🔍
+          </button>
         </div>
       </div>
     </div>

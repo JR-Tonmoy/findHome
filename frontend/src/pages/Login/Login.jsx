@@ -1,18 +1,12 @@
-// import { toast } from "react-hot-toast";
-// import { useDispatch } from "react-redux";
-// import { useNavigate } from "react-router-dom";
-// import { loginSuccess, useLoginMutation } from "../../features/auth/authSlice";
-
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { loginSuccess } from "../../features/auth/authSlice";
-import { normalizeMemberRecord } from "../../utils/memberStorage";
+import { loginSuccess, useLoginMutation } from "../../features/auth/authSlice";
 
 const Login = () => {
-  // const [login, { isLoading }] = useLoginMutation();
-  // const dispatch = useDispatch();
+  const [login, { isLoading }] = useLoginMutation();
   const dispatch = useDispatch();
 
   // ১। রাউটিং করার জন্য useNavigate হুকটি নিচ্ছি (Using useNavigate for redirection)
@@ -20,10 +14,13 @@ const Login = () => {
   const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState("");
 
   // ৩। ফর্ম সাবমিট করার ফাংশন
-  const handleDemoLogin = (e) => {
+  const handleDemoLogin = async (e) => {
     e.preventDefault(); // পেজ রিলোড বন্ধ করার জন্য
+    setFormError("");
+    const toastId = toast.loading("Signing in...");
 
     const formData = new FormData(e.target);
     const email = String(formData.get("email") || "")
@@ -31,68 +28,44 @@ const Login = () => {
       .toLowerCase();
     const password = formData.get("password");
 
-    // Admin account (hardcoded)
-    const adminAccount = {
-      id: "#admin",
-      fullName: "Tanim Hasan",
-      name: "Tanim Hasan",
-      email: "admin@findhome.com",
-      phone: "+880 1712-345678",
-      password: "admin123",
-      role: "admin",
-      avatar: "",
-    };
+    try {
+      const response = await login({ email, password }).unwrap();
+      const apiUser = response?.data?.user;
+      const apiToken = response?.data?.token;
 
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]",
-    ).map(normalizeMemberRecord);
-    const registeredOwners = JSON.parse(
-      localStorage.getItem("registeredOwners") || "[]",
-    ).map(normalizeMemberRecord);
-    const demoUser = JSON.parse(
-      localStorage.getItem("demoRegisteredUser") || "{}",
-    );
+      if (!apiUser || !apiToken) {
+        const message = "Invalid login response from server.";
+        setFormError(message);
+        toast.error(message, { id: toastId });
+        return;
+      }
 
-    const candidates = [
-      adminAccount,
-      ...registeredOwners.map((member) => ({ ...member, role: "owner" })),
-      ...registeredUsers.map((member) => ({ ...member, role: "tenant" })),
-      demoUser.email ? demoUser : null,
-    ].filter(Boolean);
+      const currentUser = {
+        ...apiUser,
+        fullName: apiUser.name || apiUser.fullName,
+        role: apiUser.role || "tenant",
+      };
 
-    const matchedUser = candidates.find(
-      (member) =>
-        String(member.email || "")
-          .trim()
-          .toLowerCase() === email,
-    );
+      dispatch(loginSuccess({ user: currentUser, token: apiToken }));
 
-    if (!matchedUser) {
-      alert("No account found with this email. Please register first!");
-      navigate("/register", { state: { from: location.state?.from } });
-      return;
+      // Redirect to appropriate dashboard based on role
+      let redirectPath = location.state?.from?.pathname || "/home";
+      if (currentUser.role === "admin") {
+        redirectPath = "/admin/dashboard";
+      } else if (currentUser.role === "owner") {
+        redirectPath = "/owner-dashboard";
+      } else {
+        redirectPath = "/dashboard";
+      }
+
+      toast.success("Login successful!", { id: toastId });
+      navigate(redirectPath);
+    } catch (error) {
+      const message =
+        error?.data?.message || "Login failed. Please check credentials.";
+      setFormError(message);
+      toast.error(message, { id: toastId });
     }
-
-    if (matchedUser.password !== password) {
-      alert("This password is WRONG. Please correct it.");
-      return;
-    }
-
-    const currentUser = {
-      ...matchedUser,
-      role: matchedUser.role || "tenant",
-    };
-
-    dispatch(loginSuccess({ user: currentUser, token: `demo-${Date.now()}` }));
-
-    // Redirect to appropriate dashboard based on role
-    let redirectPath = location.state?.from?.pathname || "/home";
-    if (currentUser.role === "admin") {
-      redirectPath = "/admin/dashboard";
-    } else if (currentUser.role === "owner") {
-      redirectPath = "/owner-dashboard";
-    }
-    navigate(redirectPath);
   };
 
   // const onSubmit = async (data) => {
@@ -118,6 +91,12 @@ const Login = () => {
 
         {/* ফর্ম এ onSubmit ইভেন্ট যুক্ত করা হলো */}
         <form className="mt-8 space-y-6" onSubmit={handleDemoLogin}>
+          {formError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {formError}
+            </div>
+          ) : null}
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -183,9 +162,10 @@ const Login = () => {
           <div>
             <button
               type="submit"
+              disabled={isLoading}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </div>
         </form>

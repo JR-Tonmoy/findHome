@@ -63,6 +63,7 @@ const Product = ({ selectedCategory = "All" }) => {
       [property.area, property.district, property.division]
         .filter(Boolean)
         .join(", "),
+    division: property.division || null,
     price: property.price,
     beds: property.beds,
     baths: property.baths,
@@ -91,12 +92,38 @@ const Product = ({ selectedCategory = "All" }) => {
           (property) => property.category === selectedCategory,
         );
 
-  // If division filter is present, only include properties where owner set `division`
+  // If division filter is present, include properties matching by `division`,
+  // or where the `location`/area/district contains the division string.
   if (divisionFilter) {
-    filteredProperties = filteredProperties.filter(
-      (property) =>
-        String(property.division).toLowerCase() ===
-        String(divisionFilter).toLowerCase(),
+    const d = String(divisionFilter).toLowerCase().trim();
+    filteredProperties = filteredProperties.filter((property) => {
+      // direct division field
+      if (property.division && String(property.division).toLowerCase() === d)
+        return true;
+      // some featured properties may not have division but location may include it
+      if (
+        property.location &&
+        String(property.location).toLowerCase().includes(d)
+      )
+        return true;
+      // check area/district/division concatenation
+      const composed = [property.area, property.district, property.division]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (composed.includes(d)) return true;
+      return false;
+    });
+  }
+
+  // If search query is present, filter by location (case-insensitive substring match)
+  const searchQuery = params.get("search") || null;
+  if (searchQuery) {
+    const q = String(searchQuery).toLowerCase().trim();
+    filteredProperties = filteredProperties.filter((property) =>
+      String(property.location || "")
+        .toLowerCase()
+        .includes(q),
     );
   }
 
