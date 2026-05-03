@@ -1000,6 +1000,7 @@ const ViewDetails = () => {
                 to={isAuthenticated ? `/order/${property.id}` : "/login"}
                 state={{ from: currentLocation }}
                 className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+                style={{ color: "#fff" }}
                 onClick={(e) => {
                   if (!isAuthenticated) {
                     e.preventDefault();
@@ -1009,7 +1010,8 @@ const ViewDetails = () => {
               >
                 {isAuthenticated ? (
                   <>
-                    <Briefcase size={20} /> Order Now
+                    <Briefcase size={20} style={{ color: "#fff" }} />
+                    <span style={{ color: "#fff" }}>Booking Now</span>
                   </>
                 ) : (
                   <span className="text-white">👤 Login/Register</span>

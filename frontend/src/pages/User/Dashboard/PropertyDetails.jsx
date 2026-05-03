@@ -387,9 +387,11 @@ const PropertyDetails = () => {
 
             <Link
               to={`/dashboard/order/${property.id}`}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+              className="w-full bg-black hover:bg-white hover:text-black border border-black font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+              style={{ color: "#fff" }}
             >
-              <Briefcase size={20} /> Order Now
+              <Briefcase size={20} style={{ color: "#fff" }} />
+              <span style={{ color: "#fff" }}>Booking</span>
             </Link>
 
             <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-100">

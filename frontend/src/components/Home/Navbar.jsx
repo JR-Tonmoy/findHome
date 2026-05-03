@@ -4,6 +4,10 @@ import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logoutSuccess } from "../../features/auth/authSlice";
 import useAuth from "../../hooks/useAuth";
+import {
+  getAdminProfile,
+  getCurrentMemberProfile,
+} from "../../utils/memberStorage";
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -19,7 +23,20 @@ const Navbar = () => {
   const isOwner = userRole === "owner" || userRole === "property owner";
   const isAdmin = userRole === "admin";
   const canAddProperty = isOwner || isAdmin;
-  const displayName = user?.fullName || user?.name || user?.email || "";
+  const storedProfile = isAuthenticated
+    ? isAdmin
+      ? getAdminProfile()
+      : getCurrentMemberProfile()
+    : null;
+  const displayName =
+    user?.fullName ||
+    storedProfile?.fullName ||
+    user?.name ||
+    storedProfile?.name ||
+    user?.email ||
+    storedProfile?.email ||
+    "";
+  const profileAvatar = user?.avatar || storedProfile?.avatar || "";
   const displayInitial = displayName.trim().charAt(0).toUpperCase() || "U";
 
   const profileRoute = isAdmin
@@ -76,7 +93,7 @@ const Navbar = () => {
               className="flex-1 md:flex-none w-full md:w-auto"
             >
               <button className="flex items-center gap-2 border border-black bg-black text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:text-black w-full justify-center transition cursor-pointer">
-                🏠 Order Home
+                🏠 Booking
               </button>
             </Link>
           )}
@@ -86,8 +103,16 @@ const Navbar = () => {
                 className="flex items-center gap-2 border border-black bg-black text-white text-sm font-medium hover:bg-white hover:text-black justify-center transition cursor-pointer w-10 h-10 rounded-full p-0"
                 onClick={() => navigate(profileRoute)}
               >
-                <div className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
-                  {displayInitial}
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt={displayName || "Profile"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span>{displayInitial}</span>
+                  )}
                 </div>
               </button>
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity invisible group-hover:visible z-101">
