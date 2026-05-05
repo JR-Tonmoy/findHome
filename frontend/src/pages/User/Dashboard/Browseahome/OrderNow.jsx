@@ -5,10 +5,15 @@ import {
   CreditCard,
   MapPin,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { addAdminNotification } from "../../../../utils/adminNotificationStorage";
+import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
 
 const OrderNow = () => {
   const { id } = useParams();
+  const currentMember = getCurrentMemberProfile();
+  const [statusMessage, setStatusMessage] = useState("");
 
   // Fake database mimicking all properties (same as PropertyDetails to ensure data sync)
   const allProperties = [
@@ -261,13 +266,77 @@ const OrderNow = () => {
                 Personal Information
               </h2>
 
-              <form className="space-y-6">
+              <form
+                className="space-y-6"
+                onSubmit={(event) => {
+                  event.preventDefault();
+
+                  const formData = new FormData(event.currentTarget);
+                  const tenantName = String(
+                    formData.get("fullName") ||
+                      currentMember.fullName ||
+                      "Tenant",
+                  ).trim();
+                  const tenantPhone = String(
+                    formData.get("phone") || currentMember.phone || "N/A",
+                  ).trim();
+                  const tenantEmail = String(
+                    formData.get("email") || currentMember.email || "N/A",
+                  ).trim();
+                  const moveInDate = String(
+                    formData.get("moveInDate") || "",
+                  ).trim();
+                  const duration = String(
+                    formData.get("duration") || "6",
+                  ).trim();
+                  const message = String(formData.get("message") || "").trim();
+
+                  const bookingRequest = {
+                    id: `booking-${Date.now()}`,
+                    propertyId: property.id,
+                    propertyTitle: property.title,
+                    tenantName,
+                    tenantPhone,
+                    tenantEmail,
+                    moveInDate,
+                    duration,
+                    message,
+                    createdAt: new Date().toISOString(),
+                  };
+
+                  const existingRequests = JSON.parse(
+                    localStorage.getItem("tenantBookingRequests") || "[]",
+                  );
+                  localStorage.setItem(
+                    "tenantBookingRequests",
+                    JSON.stringify([bookingRequest, ...existingRequests]),
+                  );
+
+                  addAdminNotification({
+                    type: "booking",
+                    title: "New tenant booking request",
+                    message: `${tenantName} requested ${property.title}.`,
+                    meta: {
+                      propertyId: property.id,
+                      propertyTitle: property.title,
+                      tenantName,
+                      tenantEmail,
+                      tenantPhone,
+                    },
+                    createdAt: bookingRequest.createdAt,
+                  });
+
+                  setStatusMessage("Your booking request has been sent.");
+                  event.currentTarget.reset();
+                }}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Full Name
                     </label>
                     <input
+                      name="fullName"
                       type="text"
                       placeholder="e.g. John Doe"
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -278,6 +347,7 @@ const OrderNow = () => {
                       Phone Number
                     </label>
                     <input
+                      name="phone"
                       type="tel"
                       placeholder="e.g. +880 1XXX-XXXXXX"
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -290,6 +360,7 @@ const OrderNow = () => {
                     Email Address
                   </label>
                   <input
+                    name="email"
                     type="email"
                     placeholder="e.g. john@example.com"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -311,6 +382,7 @@ const OrderNow = () => {
                         size={20}
                       />
                       <input
+                        name="moveInDate"
                         type="date"
                         className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       />
@@ -320,7 +392,10 @@ const OrderNow = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Duration (Months)
                     </label>
-                    <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white">
+                    <select
+                      name="duration"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                    >
                       <option value="6">6 Months</option>
                       <option value="12">1 Year</option>
                       <option value="24">2 Years</option>
@@ -334,6 +409,7 @@ const OrderNow = () => {
                     Additional Message for Owner
                   </label>
                   <textarea
+                    name="message"
                     rows="4"
                     placeholder="Hello, I am interested in renting this property..."
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -350,12 +426,16 @@ const OrderNow = () => {
                 </div>
 
                 <button
-                  type="button"
-                  onClick={() => alert("Order successfully placed!")}
+                  type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8 shadow-sm"
                 >
                   Confirm Order Request
                 </button>
+                {statusMessage ? (
+                  <p className="mt-3 text-sm font-medium text-green-600">
+                    {statusMessage}
+                  </p>
+                ) : null}
               </form>
             </div>
           </div>

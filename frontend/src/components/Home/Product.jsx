@@ -2,8 +2,7 @@ import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../utils/memberStorage";
-import { HOME_FEATURED_PROPERTIES } from "../../utils/propertyCatalog";
-import { getStoredProperties } from "../../utils/propertyStorage";
+import { getPublicProperties } from "../../utils/publicPropertyFeed";
 import {
   isPropertySaved,
   toggleSavedProperty,
@@ -13,31 +12,42 @@ const Product = ({ selectedCategory = "All" }) => {
   const navigate = useNavigate();
   const currentMember = getCurrentMemberProfile();
   const savedStorageKey = currentMember.email;
-  const [savedProperties, setSavedProperties] = useState(() =>
-    getStoredProperties(),
-  );
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [, setSavedRefreshTick] = useState(0);
 
   useEffect(() => {
-    const refreshSavedProperties = () => {
-      setSavedProperties(getStoredProperties());
+    let isActive = true;
+
+    const loadProperties = async () => {
+      setLoading(true);
+
+      try {
+        const allProperties = await getPublicProperties();
+
+        if (isActive) {
+          setProperties(allProperties);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
     };
 
     const refreshSavedState = () => {
       setSavedRefreshTick((currentValue) => currentValue + 1);
     };
 
-    refreshSavedProperties();
-    window.addEventListener("storage", refreshSavedProperties);
-    window.addEventListener("owner-properties-updated", refreshSavedProperties);
+    loadProperties();
+    window.addEventListener("storage", loadProperties);
+    window.addEventListener("owner-properties-updated", loadProperties);
     window.addEventListener("saved-properties-updated", refreshSavedState);
 
     return () => {
-      window.removeEventListener("storage", refreshSavedProperties);
-      window.removeEventListener(
-        "owner-properties-updated",
-        refreshSavedProperties,
-      );
+      isActive = false;
+      window.removeEventListener("storage", loadProperties);
+      window.removeEventListener("owner-properties-updated", loadProperties);
       window.removeEventListener("saved-properties-updated", refreshSavedState);
     };
   }, []);
@@ -48,49 +58,16 @@ const Product = ({ selectedCategory = "All" }) => {
   };
 
   const location = useLocation();
-  const featuredProperties = HOME_FEATURED_PROPERTIES;
 
   // Read optional division query param from URL
   const params = new URLSearchParams(location.search);
   const divisionFilter = params.get("division") || null;
 
-  const savedPropertyCards = savedProperties.map((property) => ({
-    id: property.id,
-    category: property.category,
-    title: property.title,
-    location:
-      property.location ||
-      [property.area, property.district, property.division]
-        .filter(Boolean)
-        .join(", "),
-    division: property.division || null,
-    price: property.price,
-    beds: property.beds,
-    baths: property.baths,
-    sqft: property.sqft,
-    image:
-      property.image ||
-      property.images?.[0] ||
-      "https://placehold.co/400x300?text=No+Image",
-  }));
-
-  const allProperties = [
-    ...savedPropertyCards,
-    ...featuredProperties.filter(
-      (featuredProperty) =>
-        !savedPropertyCards.some(
-          (savedProperty) => savedProperty.id === featuredProperty.id,
-        ),
-    ),
-  ];
-
   // Filter properties based on selected category, then slice to show max 10
   let filteredProperties =
     selectedCategory === "All"
-      ? allProperties
-      : allProperties.filter(
-          (property) => property.category === selectedCategory,
-        );
+      ? properties
+      : properties.filter((property) => property.category === selectedCategory);
 
   // If division filter is present, include properties matching by `division`,
   // or where the `location`/area/district contains the division string.
@@ -130,8 +107,8 @@ const Product = ({ selectedCategory = "All" }) => {
   const displayedProperties = filteredProperties.slice(0, 10);
 
   const handleToggleSaved = (propertyId) => {
-    const property = featuredProperties.find(
-      (featuredProperty) => featuredProperty.id === propertyId,
+    const property = properties.find(
+      (currentProperty) => currentProperty.id === propertyId,
     );
 
     toggleSavedProperty(property || propertyId, savedStorageKey);
@@ -149,7 +126,9 @@ const Product = ({ selectedCategory = "All" }) => {
 
       {/* Card Grid Container for Featured Properties*/}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5">
-        {displayedProperties.length > 0 ? (
+        {loading ? (
+          <p className="text-center col-span-full">Loading properties...</p>
+        ) : displayedProperties.length > 0 ? (
           displayedProperties.map((property) => (
             <div
               key={property.id}

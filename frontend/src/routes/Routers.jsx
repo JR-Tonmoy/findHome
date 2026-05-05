@@ -4,6 +4,7 @@ import AdminLayout from "../layouts/AdminLayout"; // Admin Layout Custom
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
 import AdminDashboard from "../pages/Admin/Dashboard/Dashboard"; // Admin ড্যাশবোর্ড ইমপোর্ট করলাম
+import ManageProperties from "../pages/Admin/Dashboard/ManageProperties"; // Admin Properties ইমপোর্ট করলাম
 import AdminOwner from "../pages/Admin/Dashboard/Owner";
 import AdminProfile from "../pages/Admin/Dashboard/Profile";
 import AdminUsers from "../pages/Admin/Dashboard/Users"; // Admin Users ইমপোর্ট করলাম
@@ -30,14 +31,10 @@ import RoleProtected from "./RoleProtected";
 // import Sidebar from "../pages/User/Sidebar/Sidebar";
 
 const Routers = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  const defaultAuthenticatedRoute =
-    user?.role === "admin"
-      ? "/admin/dashboard"
-      : user?.role === "owner"
-        ? "/owner-dashboard"
-        : "/dashboard";
+  // After login, send authenticated users to the public home page
+  const defaultAuthenticatedRoute = "/home";
 
   return (
     <Routes>
@@ -76,6 +73,8 @@ const Routers = () => {
         <Route path="users" element={<AdminUsers />} />
         {/* /admin/owners */}
         <Route path="owners" element={<AdminOwner />} />
+        {/* /admin/properties */}
+        <Route path="properties" element={<ManageProperties />} />
       </Route>
 
       {/* 

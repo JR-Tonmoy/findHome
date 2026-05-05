@@ -1,4 +1,4 @@
-import { DollarSign, Home, PlusCircle, Users } from "lucide-react";
+import { Home, PlusCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../../utils/memberStorage";
@@ -54,7 +54,7 @@ const OwnerDashboard = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 md:gap-6 mt-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
           <div>
             <p className="text-gray-500 text-sm mb-1">Total Properties</p>
@@ -64,26 +64,6 @@ const OwnerDashboard = () => {
           </div>
           <div className="bg-gray-50 p-3 rounded-xl text-black">
             <Home size={24} />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-          <div>
-            <p className="text-gray-500 text-sm mb-1">Total Tenants</p>
-            <h2 className="text-3xl font-bold text-gray-800">3</h2>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-xl text-black">
-            <Users size={24} />
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-          <div>
-            <p className="text-gray-500 text-sm mb-1">Monthly Earnings</p>
-            <h2 className="text-3xl font-bold text-gray-800">৳85,000</h2>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-xl text-black">
-            <DollarSign size={24} />
           </div>
         </div>
       </div>

@@ -48,18 +48,9 @@ const Login = () => {
 
       dispatch(loginSuccess({ user: currentUser, token: apiToken }));
 
-      // Redirect to appropriate dashboard based on role
-      let redirectPath = location.state?.from?.pathname || "/home";
-      if (currentUser.role === "admin") {
-        redirectPath = "/admin/dashboard";
-      } else if (currentUser.role === "owner") {
-        redirectPath = "/owner-dashboard";
-      } else {
-        redirectPath = "/dashboard";
-      }
-
+      // After successful login, send everyone to the public home page
       toast.success("Login successful!", { id: toastId });
-      navigate(redirectPath);
+      navigate("/home", { replace: true });
     } catch (error) {
       const message =
         error?.data?.message || "Login failed. Please check credentials.";

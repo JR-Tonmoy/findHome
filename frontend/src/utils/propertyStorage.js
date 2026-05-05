@@ -1,4 +1,12 @@
+import { addAdminNotification } from "./adminNotificationStorage";
+
 const PROPERTY_STORAGE_KEY = "ownerProperties";
+
+const API_BASE_URL =
+  import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
+const PROPERTY_API_URL = API_BASE_URL
+  ? `${API_BASE_URL}/api/v1/properties`
+  : "";
 
 const readJSON = (key, fallback) => {
   try {
@@ -11,6 +19,49 @@ const readJSON = (key, fallback) => {
 
 const writeJSON = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
+};
+
+const dispatchPropertiesUpdated = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("owner-properties-updated"));
+  }
+};
+
+const getAuthToken = () => {
+  try {
+    return localStorage.getItem("token") || "";
+  } catch {
+    return "";
+  }
+};
+
+const requestJson = async (url, options = {}) => {
+  if (!PROPERTY_API_URL) {
+    throw new Error("Property API URL is not configured.");
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await response.json()
+    : null;
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.message || `Request failed with status ${response.status}`,
+    );
+  }
+
+  return payload;
 };
 
 const makePropertyId = () => {
@@ -50,8 +101,6 @@ const normalizePropertyRecord = (property = {}) => {
         .filter(Boolean)
         .join(", "),
     price: property.price || "0",
-    bedrooms: toNumberOrNull(property.bedrooms ?? property.beds),
-    bathrooms: toNumberOrNull(property.bathrooms ?? property.baths),
     beds: toNumberOrNull(property.beds ?? property.bedrooms),
     baths: toNumberOrNull(property.baths ?? property.bathrooms),
     sqft: toNumberOrNull(property.sqft),
@@ -86,35 +135,81 @@ const getStoredProperties = () =>
     normalizePropertyRecord(property),
   );
 
-const saveProperty = (property) => {
+const writeStoredProperties = (properties) => {
+  writeJSON(PROPERTY_STORAGE_KEY, properties);
+  dispatchPropertiesUpdated();
+};
+
+const persistPropertyToBackend = async (property, method) => {
+  if (!PROPERTY_API_URL) {
+    return property;
+  }
+
+  const url =
+    method === "POST"
+      ? PROPERTY_API_URL
+      : `${PROPERTY_API_URL}/${encodeURIComponent(property.id)}`;
+
+  const response = await requestJson(url, {
+    method,
+    body: JSON.stringify(property),
+  });
+
+  return normalizePropertyRecord(response?.data || property);
+};
+
+const saveProperty = async (property) => {
   const currentProperties = getStoredProperties();
   const nextProperty = normalizePropertyRecord(property);
-  const existingIndex = currentProperties.findIndex(
+  const method = property.id ? "PUT" : "POST";
+  let savedProperty = nextProperty;
+  const isUpdate = currentProperties.some(
     (storedProperty) => storedProperty.id === nextProperty.id,
+  );
+
+  try {
+    savedProperty = await persistPropertyToBackend(nextProperty, method);
+  } catch (error) {
+    if (method === "PUT") {
+      try {
+        savedProperty = await persistPropertyToBackend(nextProperty, "POST");
+      } catch {
+        console.warn(
+          "Property API save failed; keeping the local copy.",
+          error,
+        );
+      }
+    } else {
+      console.warn("Property API save failed; keeping the local copy.", error);
+    }
+  }
+
+  const existingIndex = currentProperties.findIndex(
+    (storedProperty) => storedProperty.id === savedProperty.id,
   );
 
   const updatedProperties =
     existingIndex >= 0
       ? currentProperties.map((storedProperty, index) =>
-          index === existingIndex
-            ? normalizePropertyRecord({
-                ...storedProperty,
-                ...property,
-                id: storedProperty.id,
-                createdAt: storedProperty.createdAt,
-                owner: property.owner || storedProperty.owner,
-              })
-            : storedProperty,
+          index === existingIndex ? savedProperty : storedProperty,
         )
-      : [nextProperty, ...currentProperties];
+      : [savedProperty, ...currentProperties];
 
-  writeJSON(PROPERTY_STORAGE_KEY, updatedProperties);
+  writeStoredProperties(updatedProperties);
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("owner-properties-updated"));
-  }
+  addAdminNotification({
+    type: "property",
+    title: isUpdate ? "Property updated" : "New property uploaded",
+    message: `${savedProperty.owner?.name || "An owner"} ${isUpdate ? "updated" : "uploaded"} ${savedProperty.title}.`,
+    meta: {
+      propertyId: savedProperty.id,
+      ownerName: savedProperty.owner?.name || "Property Owner",
+      propertyTitle: savedProperty.title,
+    },
+    createdAt: savedProperty.createdAt || new Date().toISOString(),
+  });
 
-  return nextProperty;
+  return savedProperty;
 };
 
 const findPropertyById = (id) => {
@@ -123,22 +218,80 @@ const findPropertyById = (id) => {
   return getStoredProperties().find((property) => property.id === normalizedId);
 };
 
-const deleteProperty = (id) => {
+const fetchAllProperties = async () => {
+  if (!PROPERTY_API_URL) {
+    return getStoredProperties();
+  }
+
+  try {
+    const response = await requestJson(PROPERTY_API_URL, { method: "GET" });
+    const properties = Array.isArray(response?.data)
+      ? response.data.map((property) => normalizePropertyRecord(property))
+      : [];
+
+    writeStoredProperties(properties);
+    return properties;
+  } catch (error) {
+    console.warn(
+      "Failed to fetch properties from backend; using local cache.",
+      error,
+    );
+    return getStoredProperties();
+  }
+};
+
+const fetchPropertyById = async (id) => {
+  const existingProperty = findPropertyById(id);
+
+  if (existingProperty) {
+    return existingProperty;
+  }
+
+  if (!PROPERTY_API_URL) {
+    return null;
+  }
+
+  const response = await requestJson(
+    `${PROPERTY_API_URL}/${encodeURIComponent(id)}`,
+    {
+      method: "GET",
+    },
+  );
+
+  return normalizePropertyRecord(response?.data || null);
+};
+
+const deleteProperty = async (id) => {
   const normalizedId = String(id);
+
+  if (PROPERTY_API_URL) {
+    try {
+      await requestJson(
+        `${PROPERTY_API_URL}/${encodeURIComponent(normalizedId)}`,
+        {
+          method: "DELETE",
+        },
+      );
+    } catch (error) {
+      console.warn(
+        "Property API delete failed; removing the local copy only.",
+        error,
+      );
+    }
+  }
+
   const currentProperties = getStoredProperties();
   const updatedProperties = currentProperties.filter(
     (property) => property.id !== normalizedId,
   );
 
-  writeJSON(PROPERTY_STORAGE_KEY, updatedProperties);
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("owner-properties-updated"));
-  }
+  writeStoredProperties(updatedProperties);
 };
 
 export {
   deleteProperty,
+  fetchAllProperties,
+  fetchPropertyById,
   findPropertyById,
   getStoredProperties,
   normalizePropertyRecord,

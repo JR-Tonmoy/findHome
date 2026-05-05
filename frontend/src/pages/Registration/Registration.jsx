@@ -3,10 +3,7 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  loginSuccess,
-  useRegisterMutation,
-} from "../../features/auth/authSlice";
+import { useRegisterMutation } from "../../features/auth/authSlice";
 import { normalizeMemberRecord } from "../../utils/memberStorage";
 
 const Register = () => {
@@ -83,9 +80,7 @@ const Register = () => {
         avatar: apiUser.avatar || "",
       };
 
-      dispatch(loginSuccess({ user: normalizedUser, token: apiToken }));
-
-      // Keep the existing localStorage-backed login/dashboard flow working.
+      // Keep the existing localStorage-backed registration cache (no auto-login)
       localStorage.setItem(
         "demoRegisteredUser",
         JSON.stringify(normalizedUser),
@@ -122,7 +117,10 @@ const Register = () => {
         localStorage.setItem("registeredUsers", JSON.stringify(users));
       }
 
-      toast.success("Registration successful!", { id: toastId });
+      // After registration, send user to the login page so they can sign in.
+      toast.success("Registration successful! Please sign in.", {
+        id: toastId,
+      });
       navigate("/login", { state: { from: location.state?.from } });
     } catch (error) {
       const validationErrors = error?.data?.errors

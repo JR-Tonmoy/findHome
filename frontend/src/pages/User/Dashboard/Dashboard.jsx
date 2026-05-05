@@ -2,7 +2,7 @@ import { Heart } from "lucide-react"; // Import icons for stats
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // Import Link
 import { getCurrentMemberProfile } from "../../../utils/memberStorage";
-import { HOME_FEATURED_PROPERTIES } from "../../../utils/propertyCatalog";
+import { getPublicProperties } from "../../../utils/publicPropertyFeed";
 import { getSavedPropertyCount } from "../../../utils/savedPropertyStorage";
 
 const Dashboard = () => {
@@ -10,23 +10,39 @@ const Dashboard = () => {
   const [savedCount, setSavedCount] = useState(() =>
     getSavedPropertyCount(currentMember.email),
   );
+  const [recommendedHouses, setRecommendedHouses] = useState([]);
 
   useEffect(() => {
+    let isActive = true;
+
+    const loadRecommendedHouses = async () => {
+      const allProperties = await getPublicProperties();
+
+      if (isActive) {
+        setRecommendedHouses(allProperties.slice(0, 4));
+      }
+    };
+
     const refreshSavedCount = () => {
       setSavedCount(getSavedPropertyCount(currentMember.email));
     };
 
+    loadRecommendedHouses();
     refreshSavedCount();
     window.addEventListener("saved-properties-updated", refreshSavedCount);
     window.addEventListener("storage", refreshSavedCount);
+    window.addEventListener("owner-properties-updated", loadRecommendedHouses);
 
     return () => {
+      isActive = false;
       window.removeEventListener("saved-properties-updated", refreshSavedCount);
       window.removeEventListener("storage", refreshSavedCount);
+      window.removeEventListener(
+        "owner-properties-updated",
+        loadRecommendedHouses,
+      );
     };
   }, [currentMember.email]);
-
-  const recommendedHouses = HOME_FEATURED_PROPERTIES.slice(0, 4);
 
   return (
     <div className="max-w-5xl mx-auto">

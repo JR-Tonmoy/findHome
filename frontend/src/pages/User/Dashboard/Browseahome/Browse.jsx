@@ -2,30 +2,53 @@ import { BedDouble, Filter, Heart, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
-import { HOME_FEATURED_PROPERTIES } from "../../../../utils/propertyCatalog";
+import { getPublicProperties } from "../../../../utils/publicPropertyFeed";
 import {
   isPropertySaved,
   toggleSavedProperty,
 } from "../../../../utils/savedPropertyStorage";
 
-const properties = HOME_FEATURED_PROPERTIES;
-
 const Browse = () => {
   const currentMember = getCurrentMemberProfile();
   const savedStorageKey = currentMember.email;
   const [showAllProperties, setShowAllProperties] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [, setSavedVersion] = useState(0);
   useEffect(() => {
+    let isActive = true;
+
+    const loadProperties = async () => {
+      setLoading(true);
+
+      try {
+        const allProperties = await getPublicProperties();
+
+        if (isActive) {
+          setProperties(allProperties);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProperties();
+
     const refreshSavedState = () => {
       setSavedVersion((currentValue) => currentValue + 1);
     };
 
+    window.addEventListener("storage", loadProperties);
     window.addEventListener("saved-properties-updated", refreshSavedState);
-    window.addEventListener("storage", refreshSavedState);
+    window.addEventListener("owner-properties-updated", loadProperties);
 
     return () => {
+      isActive = false;
+      window.removeEventListener("storage", loadProperties);
       window.removeEventListener("saved-properties-updated", refreshSavedState);
-      window.removeEventListener("storage", refreshSavedState);
+      window.removeEventListener("owner-properties-updated", loadProperties);
     };
   }, []);
 
@@ -76,87 +99,91 @@ const Browse = () => {
 
       {/* Grid of properties */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayedProperties.map((property) => (
-          <div
-            key={property.id}
-            className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            {/* Image Box */}
-            <div className="h-48 overflow-hidden relative">
-              <img
-                src={property.image}
-                alt={property.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
+        {loading ? (
+          <p className="text-gray-500">Loading properties...</p>
+        ) : (
+          displayedProperties.map((property) => (
+            <div
+              key={property.id}
+              className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+            >
+              {/* Image Box */}
+              <div className="h-48 overflow-hidden relative">
+                <img
+                  src={property.image}
+                  alt={property.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-            {/* Content Box */}
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-bold text-gray-800">
-                  {property.title}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => handleToggleSaved(property.id)}
-                  className={`transition-colors ${
-                    savedPropertyMap[property.id]
-                      ? "text-red-500"
-                      : "text-gray-400 hover:text-red-500"
-                  }`}
-                  aria-pressed={savedPropertyMap[property.id]}
-                  aria-label={
-                    savedPropertyMap[property.id]
-                      ? "Remove from saved houses"
-                      : "Save house"
-                  }
-                >
-                  <Heart
-                    size={20}
-                    fill={
-                      savedPropertyMap[property.id] ? "currentColor" : "none"
+              {/* Content Box */}
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-bold text-gray-800">
+                    {property.title}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSaved(property.id)}
+                    className={`transition-colors ${
+                      savedPropertyMap[property.id]
+                        ? "text-red-500"
+                        : "text-gray-400 hover:text-red-500"
+                    }`}
+                    aria-pressed={savedPropertyMap[property.id]}
+                    aria-label={
+                      savedPropertyMap[property.id]
+                        ? "Remove from saved houses"
+                        : "Save house"
                     }
-                  />
-                </button>
-              </div>
+                  >
+                    <Heart
+                      size={20}
+                      fill={
+                        savedPropertyMap[property.id] ? "currentColor" : "none"
+                      }
+                    />
+                  </button>
+                </div>
 
-              {/* Location */}
-              <div className="flex items-center text-gray-500 text-sm mb-3">
-                <MapPin size={16} className="mr-1" />
-                {property.location}
-              </div>
+                {/* Location */}
+                <div className="flex items-center text-gray-500 text-sm mb-3">
+                  <MapPin size={16} className="mr-1" />
+                  {property.location}
+                </div>
 
-              {/* Badges */}
-              <div className="flex items-center gap-3 mb-4">
-                {property.beds > 0 && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BedDouble size={16} className="mr-1 text-black" />
-                    {property.beds} Bed
-                  </div>
-                )}
-                <span className="px-2 py-1 bg-gray-100 text-black text-xs font-semibold rounded">
-                  {property.type}
-                </span>
-              </div>
-
-              {/* Price & Action */}
-              <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-                <div className="text-black font-bold text-lg flex items-center">
-                  ৳ {property.price}
-                  <span className="text-gray-400 text-sm font-normal ml-1">
-                    /month
+                {/* Badges */}
+                <div className="flex items-center gap-3 mb-4">
+                  {property.beds > 0 && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <BedDouble size={16} className="mr-1 text-black" />
+                      {property.beds} Bed
+                    </div>
+                  )}
+                  <span className="px-2 py-1 bg-gray-100 text-black text-xs font-semibold rounded">
+                    {property.type}
                   </span>
                 </div>
-                <Link
-                  to={`/property/${property.id}`}
-                  className="text-black text-sm font-semibold hover:underline"
-                >
-                  View Details
-                </Link>
+
+                {/* Price & Action */}
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                  <div className="text-black font-bold text-lg flex items-center">
+                    ৳ {property.price}
+                    <span className="text-gray-400 text-sm font-normal ml-1">
+                      /month
+                    </span>
+                  </div>
+                  <Link
+                    to={`/property/${property.id}`}
+                    className="text-black text-sm font-semibold hover:underline"
+                  >
+                    View Details
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div className="flex justify-center mt-10">

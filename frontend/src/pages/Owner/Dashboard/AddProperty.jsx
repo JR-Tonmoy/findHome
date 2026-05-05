@@ -118,13 +118,47 @@ const AddProperty = () => {
       return;
     }
 
+    // Compress images to avoid localStorage quota issues
     const nextImages = await Promise.all(
       files.map(
         (file) =>
           new Promise((resolve, reject) => {
             const reader = new FileReader();
 
-            reader.onload = () => resolve(String(reader.result));
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                // Create canvas and resize image to reduce size
+                const canvas = document.createElement("canvas");
+                const maxWidth = 400;
+                const maxHeight = 400;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                  if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                  }
+                } else {
+                  if (height > maxHeight) {
+                    width = (width * maxHeight) / height;
+                    height = maxHeight;
+                  }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to webp or jpeg with compression
+                const compressed = canvas.toDataURL("image/jpeg", 0.6);
+                resolve(compressed);
+              };
+              img.onerror = () => reject(new Error("Failed to load image"));
+              img.src = String(reader.result);
+            };
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(file);
           }),
@@ -142,56 +176,63 @@ const AddProperty = () => {
     );
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
     const facilities = formData.getAll("facilities");
-    const property = saveProperty({
-      id: editingProperty?.id,
-      title: String(formData.get("title") || "").trim(),
-      category: String(formData.get("propertyType") || "Family"),
-      type: String(formData.get("category") || "Property"),
-      month: String(formData.get("month") || ""),
-      location: [
-        formData.get("area"),
-        formData.get("district"),
-        formData.get("division"),
-      ]
-        .filter(Boolean)
-        .join(", "),
-      price: String(formData.get("price") || "").trim(),
-      priceType: String(formData.get("priceType") || "Monthly"),
-      beds: String(formData.get("bedrooms") || ""),
-      baths: String(formData.get("bathrooms") || ""),
-      sqft: String(formData.get("sqft") || "").trim(),
-      floor: String(formData.get("floor") || floor),
-      gender: String(formData.get("gender") || ""),
-      balcony: String(formData.get("balcony") || ""),
-      division: String(formData.get("division") || division),
-      district: String(formData.get("district") || district),
-      area: String(formData.get("area") || area),
-      sectorNo: String(formData.get("sectorNo") || ""),
-      roadNo: String(formData.get("roadNo") || ""),
-      houseNo: String(formData.get("houseNo") || ""),
-      shortAddress: String(formData.get("shortAddress") || "").trim(),
-      description: String(formData.get("description") || "").trim(),
-      features: facilities,
-      images: uploadedImages,
-      image: uploadedImages[0] || "/2 Bedroom.png",
-      owner: {
-        name: currentOwner.fullName,
-        phone: currentOwner.phone,
-        email: currentOwner.email,
-      },
-      createdAt: editingProperty?.createdAt,
-      raw: Object.fromEntries(formData.entries()),
-    });
 
-    setStatusMessage(
-      `${property.title} ${isEditing ? "updated" : "saved"} successfully.`,
-    );
-    navigate("/owner-dashboard");
+    try {
+      const property = await saveProperty({
+        id: editingProperty?.id,
+        title: String(formData.get("title") || "").trim(),
+        category: String(formData.get("propertyType") || "Family"),
+        type: String(formData.get("category") || "Property"),
+        month: String(formData.get("month") || ""),
+        location: [
+          formData.get("area"),
+          formData.get("district"),
+          formData.get("division"),
+        ]
+          .filter(Boolean)
+          .join(", "),
+        price: String(formData.get("price") || "").trim(),
+        priceType: String(formData.get("priceType") || "Monthly"),
+        beds: String(formData.get("bedrooms") || ""),
+        baths: String(formData.get("bathrooms") || ""),
+        sqft: String(formData.get("sqft") || "").trim(),
+        floor: String(formData.get("floor") || floor),
+        gender: String(formData.get("gender") || ""),
+        balcony: String(formData.get("balcony") || ""),
+        division: String(formData.get("division") || division),
+        district: String(formData.get("district") || district),
+        area: String(formData.get("area") || area),
+        sectorNo: String(formData.get("sectorNo") || ""),
+        roadNo: String(formData.get("roadNo") || ""),
+        houseNo: String(formData.get("houseNo") || ""),
+        shortAddress: String(formData.get("shortAddress") || "").trim(),
+        description: String(formData.get("description") || "").trim(),
+        features: facilities,
+        // Store compressed images - only first image as primary, others as backup
+        images: uploadedImages.slice(0, 2),
+        image: uploadedImages[0] || "/2 Bedroom.png",
+        owner: {
+          name: currentOwner.fullName,
+          phone: currentOwner.phone,
+          email: currentOwner.email,
+        },
+        createdAt: editingProperty?.createdAt,
+        raw: Object.fromEntries(formData.entries()),
+      });
+
+      setStatusMessage(
+        `${property.title} ${isEditing ? "updated" : "saved"} successfully.`,
+      );
+      navigate("/owner-dashboard");
+    } catch (error) {
+      setStatusMessage(`Error saving property: ${error.message}`);
+      console.error("Property save error:", error);
+    }
   };
 
   const handleDelete = () => {
