@@ -14,7 +14,7 @@ const Orders = () => {
         </div>
         <div className="mt-4 md:mt-0">
           <Link to="/dashboard/browse">
-            <button className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition">
+            <button className="bg-black text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition">
               Create Order
             </button>
           </Link>

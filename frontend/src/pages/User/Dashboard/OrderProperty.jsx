@@ -150,7 +150,7 @@ const OrderProperty = () => {
                     ></textarea>
                   </div>
 
-                  <div className="bg-blue-50 text-blue-700 p-4 rounded-xl flex items-start gap-3 mt-6">
+                  <div className="bg-gray-50 text-gray-800 p-4 rounded-xl flex items-start gap-3 mt-6">
                     <CheckCircle className="mt-0.5 shrink-0" size={20} />
                     <p className="text-sm">
                       By confirming this order, the property owner (
@@ -161,9 +161,9 @@ const OrderProperty = () => {
 
                   <button
                     type="button"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8"
+                    className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8"
                   >
-                    Confirm Order Request
+                    Confirm Booking Request
                   </button>
                 </form>
               </div>

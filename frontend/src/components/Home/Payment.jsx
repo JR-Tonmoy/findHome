@@ -10,23 +10,23 @@ const Payment = () => {
       <div className="flex flex-wrap justify-center gap-4 px-4 md:px-10">
         {/* Logo Box */}
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="Visa.png" alt="Visa" className="h-8" />
+          <img src="/Visa.png" alt="Visa" className="h-8" />
         </div>
 
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="Master.png" alt="Mastercard" className="h-8" />
+          <img src="/Master.png" alt="Mastercard" className="h-8" />
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="sonali.png" alt="Sonali Bank" className="h-8" />
+          <img src="/sonali.png" alt="Sonali Bank" className="h-8" />
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="brac.jpg" alt="Brac Bank" className="h-8" />
+          <img src="/brac.jpg" alt="Brac Bank" className="h-8" />
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="DutchBangla.png" alt="Dutch-Bangla Bank" className="h-8" />
+          <img src="/DutchBangla.png" alt="Dutch-Bangla Bank" className="h-8" />
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
-          <img src="Nrbc.png" alt="NRBC Bank" className="h-8" />
+          <img src="/Nrbc.png" alt="NRBC Bank" className="h-8" />
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
           <img
@@ -51,6 +51,7 @@ const Payment = () => {
         </div>
         <div className="bg-white border border-black rounded-lg p-3 shadow">
           <img src="Upai.png" alt="Rocket" className="h-8" />
+          <img src="/Upai.png" alt="Upai" className="h-8" />
         </div>
       </div>
     </div>

@@ -70,7 +70,7 @@ const Navbar = () => {
             <div className="bg-black text-white p-1 rounded-lg">🏠</div>
             BashaLagbe
           </div>
-          <span className="text-black-1600 text-xs font-medium mt-0">
+          <span className="text-gray-600 text-xs font-medium mt-0">
             Find your perfect flat easily
           </span>
         </div>
@@ -168,7 +168,7 @@ const Navbar = () => {
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 shadow-lg rounded-lg py-2 z-50 overflow-hidden">
                   <Link
                     to="/home"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     {/* Property list ar kaj  */}
@@ -176,56 +176,56 @@ const Navbar = () => {
                   </Link>
                   <Link
                     to="/home?division=Barishal"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Barishal division
                   </Link>
                   <Link
                     to="/home?division=Chittagong"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Chittagong division
                   </Link>
                   <Link
                     to="/home?division=Dhaka"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Dhaka division
                   </Link>
                   <Link
                     to="/home?division=Khulna"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Khulna division
                   </Link>
                   <Link
                     to="/home?division=Mymensingh"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Mymensingh division
                   </Link>
                   <Link
                     to="/home?division=Rajshahi"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Rajshahi division
                   </Link>
                   <Link
                     to="/home?division=Rangpur"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Rangpur division
                   </Link>
                   <Link
                     to="/home?division=Sylhet"
-                    className="block px-5 py-2.5 text-[15px] text-black! hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
+                    className="block px-5 py-2.5 text-[15px] text-black hover:bg-gray-50 transform origin-left hover:scale-105 transition-all duration-300"
                     onClick={() => setDropdownOpen(false)}
                   >
                     Sylhet division

@@ -43,12 +43,14 @@ const Browse = () => {
     window.addEventListener("storage", loadProperties);
     window.addEventListener("saved-properties-updated", refreshSavedState);
     window.addEventListener("owner-properties-updated", loadProperties);
+    window.addEventListener("public-properties-updated", loadProperties);
 
     return () => {
       isActive = false;
       window.removeEventListener("storage", loadProperties);
       window.removeEventListener("saved-properties-updated", refreshSavedState);
       window.removeEventListener("owner-properties-updated", loadProperties);
+      window.removeEventListener("public-properties-updated", loadProperties);
     };
   }, []);
 

@@ -12,6 +12,18 @@ const getMemberCollectionKey = (role) =>
 
 const getAdminProfileKey = () => "adminProfile";
 
+const getStoredAuthUser = () => {
+  const authUser = readJSON("user", null);
+
+  if (authUser?.role === "admin") {
+    return authUser;
+  }
+
+  const demoUser = readJSON("demoRegisteredUser", null);
+
+  return demoUser?.role === "admin" ? demoUser : null;
+};
+
 const getDisplayName = (member) => member?.fullName || member?.name || "User";
 
 const getUsername = (member) => {
@@ -89,21 +101,22 @@ const syncCurrentMemberProfile = (updates = {}) => {
 
 const getAdminProfile = () => {
   const storedProfile = readJSON(getAdminProfileKey(), null);
+  const authUser = getStoredAuthUser();
+
+  if (storedProfile) {
+    return normalizeMemberRecord(storedProfile);
+  }
 
   return normalizeMemberRecord(
-    storedProfile || {
-      id: "#admin",
-      fullName: "Tanim Hasan",
-      name: "Tanim Hasan",
-      email: "admin@findhome.com",
-      phone: "+880 1712-345678",
-      password: "admin123",
+    authUser || {
+      id: "",
+      fullName: "",
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
       role: "admin",
-      date: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
+      date: "N/A",
       avatar: "",
     },
   );
@@ -118,6 +131,17 @@ const syncAdminProfile = (updates = {}) => {
   });
 
   localStorage.setItem(getAdminProfileKey(), JSON.stringify(mergedProfile));
+
+  const authUser = getStoredAuthUser();
+  if (authUser?.role === "admin") {
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        ...authUser,
+        ...mergedProfile,
+      }),
+    );
+  }
 
   return mergedProfile;
 };

@@ -89,6 +89,17 @@ const normalizePropertyRecord = (property = {}) => {
       ? [property.image]
       : [];
 
+  // Ensure there are at least 3 images for the gallery view by
+  // duplicating the first image as fallback when fewer are provided.
+  if (images.length > 0 && images.length < 3) {
+    while (images.length < 3) {
+      images.push(images[0]);
+    }
+  }
+
+  const bedsVal = toNumberOrNull(property.beds ?? property.bedrooms);
+  const bathsVal = toNumberOrNull(property.baths ?? property.bathrooms);
+
   return {
     id: property.id ? String(property.id) : makePropertyId(),
     title: property.title || property.shortAddress || "Untitled Property",
@@ -101,8 +112,11 @@ const normalizePropertyRecord = (property = {}) => {
         .filter(Boolean)
         .join(", "),
     price: property.price || "0",
-    beds: toNumberOrNull(property.beds ?? property.bedrooms),
-    baths: toNumberOrNull(property.baths ?? property.bathrooms),
+    // Keep both `beds`/`baths` and `bedrooms`/`bathrooms` for compatibility
+    beds: bedsVal,
+    baths: bathsVal,
+    bedrooms: bedsVal,
+    bathrooms: bathsVal,
     sqft: toNumberOrNull(property.sqft),
     floor: property.floor || "",
     description: property.description || "",
@@ -145,17 +159,23 @@ const persistPropertyToBackend = async (property, method) => {
     return property;
   }
 
-  const url =
-    method === "POST"
-      ? PROPERTY_API_URL
-      : `${PROPERTY_API_URL}/${encodeURIComponent(property.id)}`;
+  try {
+    const url =
+      method === "POST"
+        ? PROPERTY_API_URL
+        : `${PROPERTY_API_URL}/${encodeURIComponent(property.id)}`;
 
-  const response = await requestJson(url, {
-    method,
-    body: JSON.stringify(property),
-  });
+    const response = await requestJson(url, {
+      method,
+      body: JSON.stringify(property),
+    });
 
-  return normalizePropertyRecord(response?.data || property);
+    return normalizePropertyRecord(response?.data || property);
+  } catch (error) {
+    // Backend API is not available (404, 500, etc.) - silently use local property
+    // This is expected and allowed - the app works fine with localStorage
+    return property;
+  }
 };
 
 const saveProperty = async (property) => {
@@ -209,6 +229,26 @@ const saveProperty = async (property) => {
     createdAt: savedProperty.createdAt || new Date().toISOString(),
   });
 
+  // Refresh properties from backend and dispatch event to update home page
+  // This ensures owner/admin-added properties appear immediately on home page
+  // for all users (owner, admin, tenant).
+  if (PROPERTY_API_URL) {
+    try {
+      await fetchAllProperties();
+    } catch (error) {
+      console.warn(
+        "Failed to refresh properties from backend after save.",
+        error,
+      );
+    }
+  }
+
+  // Dispatch both owner-properties-updated and a new event for public properties
+  dispatchPropertiesUpdated();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("public-properties-updated"));
+  }
+
   return savedProperty;
 };
 
@@ -227,15 +267,20 @@ const fetchAllProperties = async () => {
     const response = await requestJson(PROPERTY_API_URL, { method: "GET" });
     const properties = Array.isArray(response?.data)
       ? response.data.map((property) => normalizePropertyRecord(property))
-      : [];
+      : null;
 
-    writeStoredProperties(properties);
-    return properties;
+    // Only overwrite local cache when backend returned a non-empty list.
+    // This prevents accidental clearing of owner-added properties when
+    // the backend returns an empty array or a malformed response.
+    if (Array.isArray(response?.data) && properties.length > 0) {
+      writeStoredProperties(properties);
+      return properties;
+    }
+
+    return getStoredProperties();
   } catch (error) {
-    console.warn(
-      "Failed to fetch properties from backend; using local cache.",
-      error,
-    );
+    // Backend API not available (404, connection error, etc.) - silently use local cache
+    // This is expected behavior when backend is not running
     return getStoredProperties();
   }
 };

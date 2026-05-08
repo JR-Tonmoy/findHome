@@ -24,8 +24,8 @@ const AdminProfile = () => {
     const stored = getAdminProfile();
 
     return {
-      fullName: stored.fullName,
-      email: stored.email,
+      fullName: stored.fullName || "",
+      email: stored.email || "",
       password: stored.password || "",
       avatar: stored.avatar || "",
     };
@@ -40,6 +40,9 @@ const AdminProfile = () => {
     email: initialProfile.email,
     password: initialProfile.password,
   });
+
+  const displayName = savedProfile.fullName || "Admin";
+  const displayEmail = savedProfile.email || "No email set";
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: "/admin/profile" }} />;
@@ -161,7 +164,7 @@ const AdminProfile = () => {
               <div>
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
-                    {savedProfile.fullName}
+                    {displayName}
                   </h2>
                   <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
                     Admin
@@ -169,7 +172,7 @@ const AdminProfile = () => {
                 </div>
                 <p className="mt-3 flex items-center gap-2 text-sm text-gray-600">
                   <Mail size={16} className="text-gray-400" />
-                  {savedProfile.email}
+                  {displayEmail}
                 </p>
               </div>
             </div>

@@ -37,6 +37,7 @@ const AddProperty = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [imageInputKey, setImageInputKey] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const currentOwner = getCurrentMemberProfile();
   const isEditing = Boolean(editingProperty);
 
@@ -178,6 +179,45 @@ const AddProperty = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setStatusMessage("Saving property...");
+
+    // Validate required fields
+    const title = String(event.currentTarget.title?.value || "").trim();
+    const price = String(event.currentTarget.price?.value || "").trim();
+    const bedrooms = event.currentTarget.bedrooms?.value;
+    const bathrooms = event.currentTarget.bathrooms?.value;
+    const shortAddress = String(
+      event.currentTarget.shortAddress?.value || "",
+    ).trim();
+
+    if (!title) {
+      setStatusMessage("Error: Property title is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!price) {
+      setStatusMessage("Error: Price is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!bedrooms) {
+      setStatusMessage("Error: Number of bedrooms is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!bathrooms) {
+      setStatusMessage("Error: Number of bathrooms is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!shortAddress) {
+      setStatusMessage("Error: Short address is required");
+      setIsSubmitting(false);
+      return;
+    }
 
     const formData = new FormData(event.currentTarget);
     const facilities = formData.getAll("facilities");
@@ -185,7 +225,7 @@ const AddProperty = () => {
     try {
       const property = await saveProperty({
         id: editingProperty?.id,
-        title: String(formData.get("title") || "").trim(),
+        title: title,
         category: String(formData.get("propertyType") || "Family"),
         type: String(formData.get("category") || "Property"),
         month: String(formData.get("month") || ""),
@@ -196,10 +236,10 @@ const AddProperty = () => {
         ]
           .filter(Boolean)
           .join(", "),
-        price: String(formData.get("price") || "").trim(),
+        price: price,
         priceType: String(formData.get("priceType") || "Monthly"),
-        beds: String(formData.get("bedrooms") || ""),
-        baths: String(formData.get("bathrooms") || ""),
+        beds: bedrooms || "",
+        baths: bathrooms || "",
         sqft: String(formData.get("sqft") || "").trim(),
         floor: String(formData.get("floor") || floor),
         gender: String(formData.get("gender") || ""),
@@ -210,16 +250,15 @@ const AddProperty = () => {
         sectorNo: String(formData.get("sectorNo") || ""),
         roadNo: String(formData.get("roadNo") || ""),
         houseNo: String(formData.get("houseNo") || ""),
-        shortAddress: String(formData.get("shortAddress") || "").trim(),
+        shortAddress: shortAddress,
         description: String(formData.get("description") || "").trim(),
         features: facilities,
-        // Store compressed images - only first image as primary, others as backup
-        images: uploadedImages.slice(0, 2),
-        image: uploadedImages[0] || "/2 Bedroom.png",
+        images: uploadedImages,
+        image: uploadedImages[0] || "",
         owner: {
-          name: currentOwner.fullName,
-          phone: currentOwner.phone,
-          email: currentOwner.email,
+          name: currentOwner?.fullName || "Property Owner",
+          phone: currentOwner?.phone || "N/A",
+          email: currentOwner?.email || "N/A",
         },
         createdAt: editingProperty?.createdAt,
         raw: Object.fromEntries(formData.entries()),
@@ -228,10 +267,16 @@ const AddProperty = () => {
       setStatusMessage(
         `${property.title} ${isEditing ? "updated" : "saved"} successfully.`,
       );
-      navigate("/owner-dashboard");
+      setTimeout(() => {
+        setIsSubmitting(false);
+        navigate("/owner-dashboard");
+      }, 1500);
     } catch (error) {
-      setStatusMessage(`Error saving property: ${error.message}`);
       console.error("Property save error:", error);
+      setStatusMessage(
+        `Error saving property: ${error?.message || String(error)}`,
+      );
+      setIsSubmitting(false);
     }
   };
 
@@ -716,9 +761,10 @@ const AddProperty = () => {
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+            disabled={isSubmitting}
+            className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEditing ? "Update" : "Create"}
+            {isSubmitting ? "Saving..." : isEditing ? "Update" : "Create"}
           </button>
           <Link
             to="/owner-dashboard"
@@ -737,7 +783,11 @@ const AddProperty = () => {
           )}
         </div>
         {statusMessage ? (
-          <p className="text-sm text-green-600">{statusMessage}</p>
+          <p
+            className={`text-sm font-medium ${statusMessage.startsWith("Error") ? "text-red-600" : "text-green-600"}`}
+          >
+            {statusMessage}
+          </p>
         ) : null}
       </form>
     </div>
