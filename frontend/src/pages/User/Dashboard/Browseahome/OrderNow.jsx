@@ -5,227 +5,80 @@ import {
   CreditCard,
   MapPin,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { addAdminNotification } from "../../../../utils/adminNotificationStorage";
 import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
+import { resolvePublicPropertyById } from "../../../../utils/publicPropertyResolver";
 
 const OrderNow = () => {
   const { id } = useParams();
   const currentMember = getCurrentMemberProfile();
   const [statusMessage, setStatusMessage] = useState("");
+  const [property, setProperty] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fake database mimicking all properties (same as PropertyDetails to ensure data sync)
-  const allProperties = [
-    {
-      id: 1,
-      title: "2 Bedroom Apartment",
-      price: "15,000",
-      location: "Dhanmondi, Dhaka",
-      type: "Apartment",
-      images: [
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Ahmed Hassan" },
-    },
-    {
-      id: 2,
-      title: "Bachelor Room",
-      price: "6,000",
-      location: "Mohammadpur, Dhaka",
-      type: "Room",
-      images: [
-        "https://images.unsplash.com/photo-1502672260266-1c1f51baffac3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Rahim Ali" },
-    },
-    {
-      id: 3,
-      title: "3 Bedroom Family House",
-      price: "35,000",
-      location: "Gulshan, Dhaka",
-      type: "House",
-      images: [
-        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Faisal Rahman" },
-    },
-    {
-      id: 4,
-      title: "Commercial Shop",
-      price: "25,000",
-      location: "Mirpur, Dhaka",
-      type: "Shop",
-      images: [
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Kabir Hossain" },
-    },
-    {
-      id: 5,
-      title: "Studio Apartment",
-      price: "12,000",
-      location: "Banani, Dhaka",
-      type: "Apartment",
-      images: [
-        "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Anisur Rahman" },
-    },
-    {
-      id: 6,
-      title: "4 Bedroom Duplex",
-      price: "45,000",
-      location: "Uttara, Dhaka",
-      type: "House",
-      images: [
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: { name: "Chowdhury Kamal" },
-    },
-    // ---- From Home/Product.jsx & Dashboard.jsx ----
-    {
-      id: 101,
-      title: "2 Bedroom Family Flat",
-      price: "15,000",
-      location: "Dhanmondi 4/A",
-      type: "Flat",
-      images: ["/2 Bedroom.png"],
-      owner: { name: "Abul Kashem" },
-    },
-    {
-      id: 102,
-      title: "Bachelor Single Room",
-      price: "6,000",
-      location: "Mohammadpur Bus Stand",
-      type: "Room",
-      images: ["/SingleRoom.png"],
-      owner: { name: "Shafiqur" },
-    },
-    {
-      id: 103,
-      title: "Bachelor Single Room",
-      price: "6,000",
-      location: "Mohammadpur Bus Stand",
-      type: "Room",
-      images: ["/SingleRoom.png"],
-      owner: { name: "Shafiqur" },
-    },
-    {
-      id: 104,
-      title: "Bachelor Single Room",
-      price: "6,000",
-      location: "Mohammadpur Bus Stand",
-      type: "Room",
-      images: ["/SingleRoom.png"],
-      owner: { name: "Shafiqur" },
-    },
-    {
-      id: 105,
-      title: "Bachelor Single Room",
-      price: "6,000",
-      location: "Mohammadpur Bus Stand",
-      type: "Room",
-      images: ["/SingleRoom.png"],
-      owner: { name: "Shafiqur" },
-    },
-    {
-      id: 106,
-      title: "3 Bedroom Family Flat",
-      price: "35,000",
-      location: "Gulshan-2",
-      type: "Flat",
-      images: ["/3baderoom.png"],
-      owner: { name: "Rafiq Islam" },
-    },
-    {
-      id: 107,
-      title: "Shop for Rent",
-      price: "25,000",
-      location: "Mirpur-10",
-      type: "Shop",
-      images: ["https://old.thefinancialexpress.com.bd/uploads/1603899483.jpg"],
-      owner: { name: "Jalil Rahman" },
-    },
-    {
-      id: 108,
-      title: "Bachelor Studio Flat",
-      price: "12,000",
-      location: "Banani Road-11",
-      type: "Flat",
-      images: ["/Bacelor.png"],
-      owner: { name: "Anisur" },
-    },
-    {
-      id: 109,
-      title: "Family Duplex House",
-      price: "45,000",
-      location: "Uttara Sector-7",
-      type: "House",
-      images: [
-        "https://dreamtouch-bd.com/wp-content/uploads/elementor/thumbs/small-duplex-house-design-in-bangladesh-%E2%80%93-modern-exterior-view-r1roygzxrj534v2p6nclwjnnucaof522he3574p1hk.webp",
-      ],
-      owner: { name: "Mustafa" },
-    },
-    {
-      id: 201,
-      title: "3 Bedroom Apartment",
-      price: "28,000",
-      location: "Bashundhara, Dhaka",
-      type: "Apartment",
-      images: [
-        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800",
-      ],
-      owner: { name: "Zaman" },
-    },
-    {
-      id: 202,
-      title: "Bachelor Room",
-      price: "8,000",
-      location: "Rampura, Dhaka",
-      type: "Room",
-      images: [
-        "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=800",
-      ],
-      owner: { name: "Hasan" },
-    },
-    {
-      id: 203,
-      title: "Family Flat",
-      price: "22,000",
-      location: "Dhanmondi, Dhaka",
-      type: "Flat",
-      images: [
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-      ],
-      owner: { name: "Rahman" },
-    },
-    {
-      id: 204,
-      title: "Modern Studio",
-      price: "18,000",
-      location: "Banani, Dhaka",
-      type: "Studio",
-      images: [
-        "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800",
-      ],
-      owner: { name: "Karim" },
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  // Find the property that matches the id from URL
-  const property = allProperties.find((p) => p.id === parseInt(id)) || {
-    // Fallback for any other IDs clicked from Home/Dashboard
-    id: parseInt(id),
-    title: "Property Listing (ID: " + id + ")",
-    price: "Negotiable",
-    location: "Dhaka, Bangladesh",
-    type: "Property",
-    images: [
-      "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800",
-    ],
-    owner: { name: "BashaLagbe Owner" },
-  };
+    const loadProperty = async () => {
+      setLoading(true);
+
+      try {
+        const resolvedProperty = await resolvePublicPropertyById(id);
+
+        if (isMounted) {
+          setProperty(resolvedProperty);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProperty();
+
+    window.addEventListener("owner-properties-updated", loadProperty);
+    window.addEventListener("public-properties-updated", loadProperty);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("owner-properties-updated", loadProperty);
+      window.removeEventListener("public-properties-updated", loadProperty);
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <p className="text-gray-500">Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Property not found
+          </h1>
+          <p className="mt-2 text-gray-600">
+            This property is no longer available for booking.
+          </p>
+          <Link
+            to="/dashboard/browse"
+            className="mt-6 inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Back to Browse
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen">

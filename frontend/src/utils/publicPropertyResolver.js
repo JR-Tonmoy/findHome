@@ -1,0 +1,82 @@
+import { findPropertyById } from "./propertyStorage";
+import { getPublicProperties } from "./publicPropertyFeed";
+
+const DEFAULT_IMAGE =
+  "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200";
+
+const toNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+};
+
+const ensureImageSet = (property = {}) => {
+  const images = Array.isArray(property.images)
+    ? property.images.filter(Boolean)
+    : property.image
+      ? [property.image]
+      : [];
+
+  if (images.length === 0) {
+    images.push(DEFAULT_IMAGE);
+  }
+
+  while (images.length < 3) {
+    images.push(images[0]);
+  }
+
+  return images;
+};
+
+const normalizePublicProperty = (property = {}) => {
+  const images = ensureImageSet(property);
+  const bedrooms = toNumberOrNull(property.bedrooms ?? property.beds) ?? 0;
+  const bathrooms = toNumberOrNull(property.bathrooms ?? property.baths) ?? 0;
+
+  return {
+    id: String(property.id),
+    title: property.title || "Untitled Property",
+    location: property.location || "Location not set",
+    price: property.price || "Negotiable",
+    type: property.type || property.category || "Property",
+    category: property.category || property.type || "Property",
+    bedrooms,
+    bathrooms,
+    sqft: toNumberOrNull(property.sqft) ?? 0,
+    floor: property.floor || "N/A",
+    description:
+      property.description ||
+      `This ${property.type || property.category || "property"} listing is available in ${property.location || "your selected area"}.`,
+    features:
+      Array.isArray(property.features) && property.features.length > 0
+        ? property.features
+        : ["24/7 Security", "Reliable Utilities", "Good Neighborhood"],
+    images,
+    owner: {
+      name: property.owner?.name || "Property Owner",
+      phone: property.owner?.phone || "N/A",
+      email: property.owner?.email || "N/A",
+    },
+  };
+};
+
+const resolvePublicPropertyById = async (propertyId) => {
+  const normalizedId = String(propertyId);
+
+  const storedProperty = findPropertyById(normalizedId);
+  if (storedProperty) {
+    return normalizePublicProperty(storedProperty);
+  }
+
+  const publicProperties = await getPublicProperties();
+  const matchedProperty = publicProperties.find(
+    (property) => String(property.id) === normalizedId,
+  );
+
+  return matchedProperty ? normalizePublicProperty(matchedProperty) : null;
+};
+
+export { normalizePublicProperty, resolvePublicPropertyById };
