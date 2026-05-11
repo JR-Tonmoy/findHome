@@ -1,16 +1,14 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Logo from "../../components/Logo/Logo";
 import { useRegisterMutation } from "../../features/auth/authSlice";
 import { normalizeMemberRecord } from "../../utils/memberStorage";
 
 const Register = () => {
   const [registerUser, { isLoading }] = useRegisterMutation();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -67,7 +65,6 @@ const Register = () => {
     try {
       const response = await registerUser(payload).unwrap();
       const apiUser = response?.data?.user || {};
-      const apiToken = response?.data?.token || "";
 
       const normalizedUser = {
         ...apiUser,
@@ -165,18 +162,15 @@ const Register = () => {
             Create Account
           </h2>
           {/* Subtitle */}
-          <div className="mt-2 text-center flex flex-col items-center">
-            <span className="text-sm text-gray-600">Join</span>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="bg-black text-white p-1 rounded-lg text-xs">
-                🏠
-              </div>
-              <span className="font-bold text-black text-xl">BashaLagbe</span>
-            </div>
-            <span className="text-[10px] text-gray-500 font-medium mt-0.5">
-              Find your perfect flat easily
-            </span>
-            <span className="text-sm text-gray-600 mt-2">
+          <div className="mt-4 text-center flex flex-col items-center">
+            <span className="text-sm text-gray-600 mb-1">Join</span>
+            <Logo
+              variant="default"
+              size="md"
+              showSubtitle={true}
+              linkTo="/home"
+            />
+            <span className="text-sm text-gray-600 mt-3">
               to find your perfect home
             </span>
           </div>

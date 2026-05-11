@@ -21,6 +21,10 @@ const writeJSON = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+let fetchAllPropertiesInFlight = null;
+let lastFetchAllPropertiesAt = 0;
+const FETCH_ALL_PROPERTIES_DEBOUNCE_MS = 1500;
+
 const dispatchPropertiesUpdated = () => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("owner-properties-updated"));
@@ -149,9 +153,12 @@ const getStoredProperties = () =>
     normalizePropertyRecord(property),
   );
 
-const writeStoredProperties = (properties) => {
+const writeStoredProperties = (properties, options = {}) => {
+  const { notify = true } = options;
   writeJSON(PROPERTY_STORAGE_KEY, properties);
-  dispatchPropertiesUpdated();
+  if (notify) {
+    dispatchPropertiesUpdated();
+  }
 };
 
 const persistPropertyToBackend = async (property, method) => {
@@ -171,7 +178,7 @@ const persistPropertyToBackend = async (property, method) => {
     });
 
     return normalizePropertyRecord(response?.data || property);
-  } catch (error) {
+  } catch {
     // Backend API is not available (404, 500, etc.) - silently use local property
     // This is expected and allowed - the app works fine with localStorage
     return property;
@@ -235,11 +242,8 @@ const saveProperty = async (property) => {
   if (PROPERTY_API_URL) {
     try {
       await fetchAllProperties();
-    } catch (error) {
-      console.warn(
-        "Failed to refresh properties from backend after save.",
-        error,
-      );
+    } catch {
+      console.warn("Failed to refresh properties from backend after save.");
     }
   }
 
@@ -259,30 +263,45 @@ const findPropertyById = (id) => {
 };
 
 const fetchAllProperties = async () => {
+  const now = Date.now();
+
+  if (
+    fetchAllPropertiesInFlight ||
+    now - lastFetchAllPropertiesAt < FETCH_ALL_PROPERTIES_DEBOUNCE_MS
+  ) {
+    return fetchAllPropertiesInFlight || Promise.resolve(getStoredProperties());
+  }
+
   if (!PROPERTY_API_URL) {
     return getStoredProperties();
   }
 
-  try {
-    const response = await requestJson(PROPERTY_API_URL, { method: "GET" });
-    const properties = Array.isArray(response?.data)
-      ? response.data.map((property) => normalizePropertyRecord(property))
-      : null;
+  fetchAllPropertiesInFlight = (async () => {
+    try {
+      const response = await requestJson(PROPERTY_API_URL, { method: "GET" });
+      const properties = Array.isArray(response?.data)
+        ? response.data.map((property) => normalizePropertyRecord(property))
+        : null;
 
-    // Only overwrite local cache when backend returned a non-empty list.
-    // This prevents accidental clearing of owner-added properties when
-    // the backend returns an empty array or a malformed response.
-    if (Array.isArray(response?.data) && properties.length > 0) {
-      writeStoredProperties(properties);
-      return properties;
+      // Only overwrite local cache when backend returned a non-empty list.
+      // Avoid notifying listeners here, otherwise they can recursively retrigger fetches.
+      if (Array.isArray(response?.data) && properties.length > 0) {
+        writeStoredProperties(properties, { notify: false });
+        return properties;
+      }
+
+      return getStoredProperties();
+    } catch {
+      // Backend API not available (404, connection error, etc.) - silently use local cache
+      // This is expected behavior when backend is not running
+      return getStoredProperties();
+    } finally {
+      lastFetchAllPropertiesAt = Date.now();
+      fetchAllPropertiesInFlight = null;
     }
+  })();
 
-    return getStoredProperties();
-  } catch (error) {
-    // Backend API not available (404, connection error, etc.) - silently use local cache
-    // This is expected behavior when backend is not running
-    return getStoredProperties();
-  }
+  return fetchAllPropertiesInFlight;
 };
 
 const fetchPropertyById = async (id) => {

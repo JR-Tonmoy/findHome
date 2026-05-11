@@ -2,16 +2,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Logo from "../../components/Logo/Logo";
 import { loginSuccess, useLoginMutation } from "../../features/auth/authSlice";
 
 const Login = () => {
   const [login, { isLoading }] = useLoginMutation();
   const dispatch = useDispatch();
-
-  // ১। রাউটিং করার জন্য useNavigate হুকটি নিচ্ছি (Using useNavigate for redirection)
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
@@ -66,18 +64,14 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
-        <div>
-          <h2 className="text-center text-3xl font-bold text-black">
-            Welcome Back!
-          </h2>
-          <div className="mt-2 text-center flex flex-col items-center">
-            <span className="text-sm text-gray-600 mb-1">Login to your</span>
-            <span className="font-bold text-black text-xl">BashaLagbe</span>
-            <span className="text-[10px] text-gray-500 font-medium mt-0.5">
-              Find your perfect flat easily
-            </span>
-            <span className="text-sm text-gray-600 mt-2">account</span>
-          </div>
+        <div className="text-center flex flex-col items-center">
+          <h2 className="text-3xl font-bold text-black mb-4">Welcome Back!</h2>
+          <Logo
+            variant="default"
+            size="md"
+            showSubtitle={true}
+            linkTo="/home"
+          />
         </div>
 
         {/* ফর্ম এ onSubmit ইভেন্ট যুক্ত করা হলো */}

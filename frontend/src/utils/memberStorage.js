@@ -7,6 +7,77 @@ const readJSON = (key, fallback) => {
   }
 };
 
+const API_BASE_URL =
+  import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
+const ADMIN_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/admin` : "";
+
+const getAuthToken = () => {
+  try {
+    return localStorage.getItem("token") || "";
+  } catch {
+    return "";
+  }
+};
+
+const requestJson = async (url, options = {}) => {
+  if (!ADMIN_API_URL) {
+    throw new Error("Admin API URL is not configured.");
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await response.json()
+    : null;
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.message || `Request failed with status ${response.status}`,
+    );
+  }
+
+  return payload;
+};
+
+const fetchAdminProfileFromBackend = async () => {
+  if (!ADMIN_API_URL) return null;
+
+  try {
+    const response = await requestJson(`${ADMIN_API_URL}/profile`, {
+      method: "GET",
+    });
+    return normalizeMemberRecord(response?.data || null);
+  } catch (err) {
+    // Backend not available or request failed - fall back to local
+    return null;
+  }
+};
+
+const updateAdminProfileToBackend = async (profile) => {
+  if (!ADMIN_API_URL) return null;
+
+  try {
+    const response = await requestJson(`${ADMIN_API_URL}/profile`, {
+      method: "PUT",
+      body: JSON.stringify(profile),
+    });
+
+    return normalizeMemberRecord(response?.data || profile);
+  } catch (err) {
+    // If backend fails, silently return null so caller can fallback
+    return null;
+  }
+};
+
 const getMemberCollectionKey = (role) =>
   role === "owner" ? "registeredOwners" : "registeredUsers";
 
@@ -143,13 +214,26 @@ const syncAdminProfile = (updates = {}) => {
     );
   }
 
+  // Try to persist to backend asynchronously when configured.
+  if (ADMIN_API_URL) {
+    (async () => {
+      try {
+        await updateAdminProfileToBackend(mergedProfile);
+      } catch (e) {
+        // ignore backend failures; local cache remains source of truth
+      }
+    })();
+  }
+
   return mergedProfile;
 };
 
 export {
+  fetchAdminProfileFromBackend,
   getAdminProfile,
   getCurrentMemberProfile,
   normalizeMemberRecord,
   syncAdminProfile,
   syncCurrentMemberProfile,
+  updateAdminProfileToBackend,
 };

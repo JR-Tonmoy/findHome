@@ -1,6 +1,7 @@
 import { Bell, Building, ChevronDown, UserCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Logo from "../../../components/Logo/Logo";
 import {
   getAdminNotifications,
   seedAdminNotifications,
@@ -101,12 +102,22 @@ const Dashboard = () => {
 
   return (
     <>
-      {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-1">
-          Admin Dashboard
-        </h2>
-        <p className="text-gray-500">Monitor and manage your platform</p>
+      {/* Header with Logo */}
+      <div className="mb-8 pb-6 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Logo
+              variant="default"
+              size="md"
+              showSubtitle={true}
+              linkTo="/home"
+            />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
+        </div>
+        <p className="text-gray-600 text-sm">
+          Monitor and manage your platform
+        </p>
       </div>
 
       {/* Statistics Cards */}

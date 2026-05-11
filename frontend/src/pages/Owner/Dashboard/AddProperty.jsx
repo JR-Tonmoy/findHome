@@ -8,7 +8,7 @@ import {
 import { getCurrentMemberProfile } from "../../../utils/memberStorage";
 import {
   deleteProperty,
-  findPropertyById,
+  fetchPropertyById,
   saveProperty,
 } from "../../../utils/propertyStorage";
 
@@ -26,10 +26,31 @@ const AddProperty = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const propertyId = searchParams.get("propertyId");
-  const editingProperty = useMemo(
-    () => (propertyId ? findPropertyById(propertyId) : null),
-    [propertyId],
-  );
+  const [editingProperty, setEditingProperty] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!propertyId) {
+      setEditingProperty(null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const prop = await fetchPropertyById(propertyId);
+        if (active) {
+          setEditingProperty(prop);
+        }
+      } catch (err) {
+        if (active) setEditingProperty(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [propertyId]);
   const [floor, setFloor] = useState("");
   const [division, setDivision] = useState("");
   const [district, setDistrict] = useState("");

@@ -1,17 +1,29 @@
-import { Menu } from "lucide-react"; // শুধু মেনু আইকন নিচ্ছি
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../pages/User/Sidebar/Sidebar";
+import useAuth from "../hooks/useAuth";
+import OwnerSidebar from "../pages/Owner/Sidebar/Sidebar";
+import TenantSidebar from "../pages/User/Sidebar/Sidebar";
 
 const DashboardLayout = () => {
-  // মোবাইল মেনু ওপেন বা ক্লোজ করার জন্য State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Determine user role
+  const userRole = (
+    user?.role ||
+    localStorage.getItem("userRole") ||
+    ""
+  ).toLowerCase();
+  const isOwner =
+    userRole === "owner" || userRole === "property owner";
+
+  // Select appropriate sidebar based on role
+  const SidebarComponent = isOwner ? OwnerSidebar : TenantSidebar;
 
   return (
     <div className="flex bg-gray-50 min-h-screen relative">
-      {/* 
-        মোবাইল স্ক্রিনে মেনু ওপেন করার বাটন (md:hidden মানে ডেস্কটপে লুকানো থাকবে) 
-      */}
+      {/* Mobile Menu Button */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-lg shadow text-gray-700 hover:bg-gray-100"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -19,16 +31,10 @@ const DashboardLayout = () => {
         <Menu size={24} />
       </button>
 
-      {/* 
-        বাম পাশের সাইডবার (State গুলো props হিসেবে Sidebar ফাইলে পাঠানো হচ্ছে)
-      */}
-      <Sidebar isOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+      {/* Sidebar - Dynamic based on role */}
+      <SidebarComponent isOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
-      {/* 
-        ডান পাশের কন্টেন্ট এরিয়া 
-        ml-64 মানে মার্জিন লেফট, যা সাইডবারের জায়গা ছেড়ে দিবে (শুধু ডেস্কটপে md:ml-64)।
-        Outlet এর কারণে এখানে রাউট অনুযায়ী অন্য পেজ লোড হবে।
-      */}
+      {/* Main Content Area */}
       <div className="flex-1 md:ml-64 p-4 md:p-6 pt-16 md:pt-6 w-full lg:w-auto h-screen overflow-y-auto">
         <Outlet />
       </div>

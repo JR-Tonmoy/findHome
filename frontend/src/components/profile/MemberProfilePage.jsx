@@ -8,12 +8,21 @@ import {
   Upload,
   User,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
 import { Navigate } from "react-router-dom";
+import { updateUserProfileSuccess } from "../../features/auth/authSlice";
+import useAuth from "../../hooks/useAuth";
 import {
   getCurrentMemberProfile,
   syncCurrentMemberProfile,
 } from "../../utils/memberStorage";
+import {
+  fetchUserProfile,
+  updateUserPassword,
+  updateUserProfile,
+  uploadProfileImage,
+} from "../../utils/userProfileService";
 
 const inputBaseClass =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50 disabled:text-gray-500";
@@ -25,6 +34,8 @@ const MemberProfilePage = ({
   badgeClass,
 }) => {
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const dispatch = useDispatch();
+  const { user } = useAuth();
 
   const initialProfile = useMemo(() => {
     const stored = getCurrentMemberProfile();
@@ -44,6 +55,11 @@ const MemberProfilePage = ({
 
   const [savedProfile, setSavedProfile] = useState(initialProfile);
   const [photoPreview, setPhotoPreview] = useState(initialProfile.avatar);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({
     fullName: initialProfile.fullName,
@@ -57,6 +73,71 @@ const MemberProfilePage = ({
     newPassword: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProfile = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const backendProfile = await fetchUserProfile();
+        if (!active || !backendProfile) return;
+
+        const mergedProfile = {
+          fullName:
+            backendProfile.fullName || backendProfile.name || fallbackName,
+          email: backendProfile.email || "N/A",
+          phone: backendProfile.phone || "N/A",
+          location: savedProfile.location || "Dhaka, Bangladesh",
+          bio: savedProfile.bio || "Tell people a little about yourself.",
+          joined: savedProfile.joined || "N/A",
+          role: backendProfile.role || roleLabel,
+          avatar: backendProfile.avatar || backendProfile.profile_image || "",
+          password: "",
+        };
+
+        setSavedProfile(mergedProfile);
+        setPhotoPreview(mergedProfile.avatar);
+        setProfileForm((current) => ({
+          ...current,
+          fullName: mergedProfile.fullName,
+          email: mergedProfile.email,
+          phone: mergedProfile.phone,
+        }));
+
+        syncCurrentMemberProfile({
+          fullName: mergedProfile.fullName,
+          name: mergedProfile.fullName,
+          email: mergedProfile.email,
+          phone: mergedProfile.phone,
+          avatar: mergedProfile.avatar,
+        });
+
+        dispatch(
+          updateUserProfileSuccess({
+            ...backendProfile,
+            name: mergedProfile.fullName,
+            fullName: mergedProfile.fullName,
+            avatar: mergedProfile.avatar,
+          }),
+        );
+      } catch {
+        // keep local fallback profile
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [dispatch, fallbackName, roleLabel]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: backFrom }} />;
@@ -89,14 +170,7 @@ const MemberProfilePage = ({
       const result = reader.result;
       if (typeof result === "string") {
         setPhotoPreview(result);
-        setSavedProfile((current) => ({
-          ...current,
-          avatar: result,
-        }));
-        syncCurrentMemberProfile({ avatar: result });
-        const currentEmail =
-          profileForm.email || savedProfile.email || initialProfile.email;
-        localStorage.setItem(`profilePhoto:${currentEmail}`, result);
+        setSelectedImageFile(file);
       }
     };
     reader.readAsDataURL(file);
@@ -111,6 +185,7 @@ const MemberProfilePage = ({
       bio: savedProfile.bio,
     });
     setPhotoPreview(savedProfile.avatar);
+    setSelectedImageFile(null);
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
@@ -123,72 +198,113 @@ const MemberProfilePage = ({
     setIsEditing(false);
   };
 
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
-
-    const storedProfile = JSON.parse(
-      localStorage.getItem("demoRegisteredUser") || "{}",
-    );
+    setErrorMessage("");
+    setSuccessMessage("");
 
     if (
       passwordForm.currentPassword ||
       passwordForm.newPassword ||
       passwordForm.confirmPassword
     ) {
-      if (
-        storedProfile.password &&
-        passwordForm.currentPassword !== storedProfile.password
-      ) {
-        alert("Current password is incorrect.");
-        return;
-      }
-
       if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        alert("New passwords do not match.");
+        setErrorMessage("New passwords do not match.");
         return;
       }
     }
 
-    const updatedProfile = syncCurrentMemberProfile({
-      ...profileForm,
-      avatar: photoPreview,
-      ...(passwordForm.newPassword
-        ? { password: passwordForm.newPassword }
-        : {}),
-    });
+    setIsSaving(true);
+    try {
+      let uploadedProfile = null;
 
-    const nextProfile = {
-      fullName: updatedProfile.fullName,
-      email: updatedProfile.email,
-      phone: updatedProfile.phone,
-      location: profileForm.location,
-      bio: profileForm.bio,
-      joined: updatedProfile.date,
-      role: roleLabel,
-      avatar: updatedProfile.avatar,
-      password: updatedProfile.password || storedProfile.password || "",
-    };
+      if (selectedImageFile) {
+        uploadedProfile = await uploadProfileImage(selectedImageFile, false);
+      }
 
-    setSavedProfile(nextProfile);
-    setProfileForm({
-      fullName: nextProfile.fullName,
-      email: nextProfile.email,
-      phone: nextProfile.phone,
-      location: nextProfile.location,
-      bio: nextProfile.bio,
-    });
-    setPhotoPreview(nextProfile.avatar);
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    localStorage.setItem(
-      `profilePhoto:${nextProfile.email}`,
-      nextProfile.avatar,
-    );
-    setIsEditing(false);
-    alert("Profile updated successfully.");
+      const updatedProfile = await updateUserProfile({
+        name: profileForm.fullName,
+        email: profileForm.email,
+        phone: profileForm.phone,
+        avatar:
+          uploadedProfile?.avatar ||
+          uploadedProfile?.profile_image ||
+          photoPreview,
+        profile_image:
+          uploadedProfile?.profile_image ||
+          uploadedProfile?.avatar ||
+          photoPreview,
+      });
+
+      if (passwordForm.newPassword) {
+        await updateUserPassword(
+          passwordForm.currentPassword,
+          passwordForm.newPassword,
+        );
+      }
+
+      const nextProfile = {
+        fullName:
+          updatedProfile?.fullName ||
+          updatedProfile?.name ||
+          profileForm.fullName,
+        email: updatedProfile?.email || profileForm.email,
+        phone: updatedProfile?.phone || profileForm.phone,
+        location: profileForm.location,
+        bio: profileForm.bio,
+        joined: savedProfile.joined,
+        role: updatedProfile?.role || roleLabel,
+        avatar:
+          updatedProfile?.avatar ||
+          updatedProfile?.profile_image ||
+          photoPreview ||
+          "",
+        password: "",
+      };
+
+      setSavedProfile(nextProfile);
+      setPhotoPreview(nextProfile.avatar);
+      setSelectedImageFile(null);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setIsEditing(false);
+
+      syncCurrentMemberProfile({
+        fullName: nextProfile.fullName,
+        name: nextProfile.fullName,
+        email: nextProfile.email,
+        phone: nextProfile.phone,
+        avatar: nextProfile.avatar,
+        location: nextProfile.location,
+        bio: nextProfile.bio,
+      });
+
+      dispatch(
+        updateUserProfileSuccess({
+          ...user,
+          name: nextProfile.fullName,
+          fullName: nextProfile.fullName,
+          email: nextProfile.email,
+          phone: nextProfile.phone,
+          role: nextProfile.role,
+          avatar: nextProfile.avatar,
+          profile_image: nextProfile.avatar,
+        }),
+      );
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("profile-updated"));
+      }
+
+      setSuccessMessage("Profile updated successfully.");
+    } catch (error) {
+      setErrorMessage(error?.message || "Failed to update profile.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -199,6 +315,24 @@ const MemberProfilePage = ({
           Manage your account information
         </p>
       </div>
+
+      {isLoading && (
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
+          Loading profile data...
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
+        </div>
+      )}
 
       <form onSubmit={handleSave} className="space-y-6">
         <section className="overflow-hidden rounded-[28px] border border-gray-100 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
@@ -225,6 +359,7 @@ const MemberProfilePage = ({
                       accept="image/*"
                       className="hidden"
                       onChange={handlePhotoUpload}
+                      disabled={!isEditing}
                     />
                   </label>
                 </div>
@@ -429,11 +564,11 @@ const MemberProfilePage = ({
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="submit"
-              disabled={!isEditing}
+              disabled={!isEditing || isSaving}
               className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               <Save size={16} />
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
             <button
               type="button"

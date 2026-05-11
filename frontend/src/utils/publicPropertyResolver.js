@@ -1,4 +1,4 @@
-import { findPropertyById } from "./propertyStorage";
+import { fetchPropertyById, findPropertyById } from "./propertyStorage";
 import { getPublicProperties } from "./publicPropertyFeed";
 
 const DEFAULT_IMAGE =
@@ -65,6 +65,14 @@ const normalizePublicProperty = (property = {}) => {
 
 const resolvePublicPropertyById = async (propertyId) => {
   const normalizedId = String(propertyId);
+
+  // Try backend-specific fetch first for most up-to-date owner/contact info
+  try {
+    const backendProp = await fetchPropertyById(normalizedId);
+    if (backendProp) return normalizePublicProperty(backendProp);
+  } catch (err) {
+    // ignore and fall back to local/public feed
+  }
 
   const storedProperty = findPropertyById(normalizedId);
   if (storedProperty) {

@@ -105,6 +105,27 @@ const authSlice = createSlice({
         localStorage.removeItem("userRole");
       }
     },
+    updateUserProfileSuccess: (state, action) => {
+      if (!action.payload) return;
+
+      const currentUser = state.user || {};
+      const mergedUser = {
+        ...currentUser,
+        ...action.payload,
+        // keep backward compatibility for components reading avatar
+        avatar:
+          action.payload.avatar ||
+          action.payload.profile_image ||
+          currentUser.avatar ||
+          "",
+      };
+
+      state.user = mergedUser;
+
+      localStorage.setItem("user", JSON.stringify(mergedUser));
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userRole", mergedUser?.role || "user");
+    },
   },
 });
 
@@ -117,7 +138,11 @@ export const {
 } = authApiSlice;
 
 // Export actions
-export const { loginSuccess, logoutSuccess, initializeAuth } =
-  authSlice.actions;
+export const {
+  loginSuccess,
+  logoutSuccess,
+  initializeAuth,
+  updateUserProfileSuccess,
+} = authSlice.actions;
 
 export default authSlice.reducer;

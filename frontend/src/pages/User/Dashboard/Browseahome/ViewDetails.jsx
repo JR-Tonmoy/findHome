@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import Logo from "../../../../components/Logo/Logo";
+import useAuth from "../../../../hooks/useAuth";
+import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
 import { resolvePublicPropertyById } from "../../../../utils/publicPropertyResolver";
 
 const ViewDetails = () => {
@@ -19,6 +22,8 @@ const ViewDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const { user } = useAuth();
+  const storedProfile = getCurrentMemberProfile();
 
   const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
   const [property, setProperty] = useState(null);
@@ -91,15 +96,12 @@ const ViewDetails = () => {
   return (
     <div className="bg-gray-50 min-h-screen pb-10">
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center mb-8 sticky top-0 z-50">
-        <Link to="/dashboard/browse" className="flex flex-col">
-          <div className="flex items-center gap-2 text-black text-xl font-bold">
-            <div className="bg-black text-white p-1 rounded-lg">H</div>
-            BashaLagbe
-          </div>
-          <span className="text-gray-600 text-[10px] font-medium mt-0.5">
-            Find your perfect flat easily
-          </span>
-        </Link>
+        <Logo
+          variant="default"
+          size="sm"
+          showSubtitle={true}
+          linkTo="/dashboard/browse"
+        />
         <Link
           to="/dashboard/browse"
           className="flex items-center text-gray-500 hover:text-black font-medium"
@@ -253,7 +255,9 @@ const ViewDetails = () => {
                       Phone
                     </p>
                     <p className="font-bold text-gray-800">
-                      {property.owner.phone}
+                      {property.owner.phone && property.owner.phone !== "N/A"
+                        ? property.owner.phone
+                        : user?.phone || storedProfile?.phone || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -267,7 +271,9 @@ const ViewDetails = () => {
                       Email
                     </p>
                     <p className="font-bold text-gray-800">
-                      {property.owner.email}
+                      {property.owner.email && property.owner.email !== "N/A"
+                        ? property.owner.email
+                        : user?.email || storedProfile?.email || "N/A"}
                     </p>
                   </div>
                 </div>

@@ -8,6 +8,8 @@ import {
   getAdminProfile,
   getCurrentMemberProfile,
 } from "../../utils/memberStorage";
+import Logo from "../Logo/Logo";
+import NotificationDropdown from "../Notifications/NotificationDropdown";
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -36,7 +38,12 @@ const Navbar = () => {
     user?.email ||
     storedProfile?.email ||
     "";
-  const profileAvatar = user?.avatar || storedProfile?.avatar || "";
+  const profileAvatar =
+    user?.avatar ||
+    user?.profile_image ||
+    storedProfile?.avatar ||
+    storedProfile?.profile_image ||
+    "";
   const displayInitial = displayName.trim().charAt(0).toUpperCase() || "U";
 
   const profileRoute = isAdmin
@@ -65,15 +72,7 @@ const Navbar = () => {
       {/* Top Navbar */}
       <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 text-black text-2xl font-bold">
-            <div className="bg-black text-white p-1 rounded-lg">🏠</div>
-            BashaLagbe
-          </div>
-          <span className="text-gray-600 text-xs font-medium mt-0">
-            Find your perfect flat easily
-          </span>
-        </div>
+        <Logo variant="default" size="md" showSubtitle={true} linkTo="/home" />
 
         {/* Right Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 w-full md:w-auto">
@@ -98,32 +97,35 @@ const Navbar = () => {
             </Link>
           )}
           {isAuthenticated ? (
-            <div className="relative group w-full md:w-auto mt-2 md:mt-0 flex-1 md:flex-none">
-              <button
-                className="flex items-center gap-2 border border-black bg-black text-white text-sm font-medium hover:bg-white hover:text-black justify-center transition cursor-pointer w-10 h-10 rounded-full p-0"
-                onClick={() => navigate(profileRoute)}
-              >
-                <div className="w-6 h-6 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
-                  {profileAvatar ? (
-                    <img
-                      src={profileAvatar}
-                      alt={displayName || "Profile"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span>{displayInitial}</span>
-                  )}
-                </div>
-              </button>
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity invisible group-hover:visible z-101">
+            <>
+              <NotificationDropdown />
+              <div className="relative group w-full md:w-auto mt-2 md:mt-0 flex-1 md:flex-none">
                 <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center gap-2 border border-black bg-black text-white text-sm font-medium hover:bg-white hover:text-black justify-center transition cursor-pointer w-10 h-10 rounded-full p-0"
+                  onClick={() => navigate(profileRoute)}
                 >
-                  Logout
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
+                    {profileAvatar ? (
+                      <img
+                        src={profileAvatar}
+                        alt={displayName || "Profile"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>{displayInitial}</span>
+                    )}
+                  </div>
                 </button>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity invisible group-hover:visible z-101">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                </div>
               </div>
-            </div>
+            </>
           ) : (
             <Link
               to="/login"

@@ -7,16 +7,22 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import Logo from "../../../../components/Logo/Logo";
+import useAuth from "../../../../hooks/useAuth";
 import { addAdminNotification } from "../../../../utils/adminNotificationStorage";
 import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
+import { createBooking } from "../../../../utils/notificationService";
 import { resolvePublicPropertyById } from "../../../../utils/publicPropertyResolver";
 
 const OrderNow = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const currentMember = getCurrentMemberProfile();
   const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -84,15 +90,12 @@ const OrderNow = () => {
     <div className="bg-gray-50 min-h-screen">
       {/* Header showing Navigation */}
       <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center mb-8 sticky top-0 z-50">
-        <Link to="/dashboard/browse" className="flex flex-col">
-          <div className="flex items-center gap-2 text-black text-xl font-bold">
-            <div className="bg-black text-white p-1 rounded-lg">🏠</div>
-            BashaLagbe
-          </div>
-          <span className="text-gray-600 text-[10px] font-medium mt-0.5">
-            Find your perfect flat easily
-          </span>
-        </Link>
+        <Logo
+          variant="default"
+          size="sm"
+          showSubtitle={true}
+          linkTo="/dashboard/browse"
+        />
         <Link
           to={`/property/${property.id}`}
           className="flex items-center text-gray-500 hover:text-blue-600 font-medium"
@@ -121,66 +124,102 @@ const OrderNow = () => {
 
               <form
                 className="space-y-6"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
+                  setSubmitting(true);
+                  setStatusMessage("");
+                  setErrorMessage("");
 
-                  const formData = new FormData(event.currentTarget);
-                  const tenantName = String(
-                    formData.get("fullName") ||
-                      currentMember.fullName ||
-                      "Tenant",
-                  ).trim();
-                  const tenantPhone = String(
-                    formData.get("phone") || currentMember.phone || "N/A",
-                  ).trim();
-                  const tenantEmail = String(
-                    formData.get("email") || currentMember.email || "N/A",
-                  ).trim();
-                  const moveInDate = String(
-                    formData.get("moveInDate") || "",
-                  ).trim();
-                  const duration = String(
-                    formData.get("duration") || "6",
-                  ).trim();
-                  const message = String(formData.get("message") || "").trim();
+                  try {
+                    const formData = new FormData(event.currentTarget);
+                    const tenantName = String(
+                      formData.get("fullName") ||
+                        user?.name ||
+                        currentMember.fullName ||
+                        "Tenant",
+                    ).trim();
+                    const tenantPhone = String(
+                      formData.get("phone") ||
+                        user?.phone ||
+                        currentMember.phone ||
+                        "",
+                    ).trim();
+                    const tenantEmail = String(
+                      formData.get("email") ||
+                        user?.email ||
+                        currentMember.email ||
+                        "",
+                    ).trim();
+                    const moveInDate = String(
+                      formData.get("moveInDate") || "",
+                    ).trim();
+                    const duration = String(
+                      formData.get("duration") || "6",
+                    ).trim();
+                    const message = String(
+                      formData.get("message") || "",
+                    ).trim();
 
-                  const bookingRequest = {
-                    id: `booking-${Date.now()}`,
-                    propertyId: property.id,
-                    propertyTitle: property.title,
-                    tenantName,
-                    tenantPhone,
-                    tenantEmail,
-                    moveInDate,
-                    duration,
-                    message,
-                    createdAt: new Date().toISOString(),
-                  };
+                    // Create booking via API
+                    const booking = await createBooking({
+                      property_id: property.id,
+                      move_in_date: moveInDate || null,
+                      duration,
+                      message,
+                    });
 
-                  const existingRequests = JSON.parse(
-                    localStorage.getItem("tenantBookingRequests") || "[]",
-                  );
-                  localStorage.setItem(
-                    "tenantBookingRequests",
-                    JSON.stringify([bookingRequest, ...existingRequests]),
-                  );
+                    if (booking) {
+                      setStatusMessage(
+                        "Your booking request has been sent successfully! The owner will contact you soon.",
+                      );
+                      event.currentTarget.reset();
 
-                  addAdminNotification({
-                    type: "booking",
-                    title: "New tenant booking request",
-                    message: `${tenantName} requested ${property.title}.`,
-                    meta: {
-                      propertyId: property.id,
-                      propertyTitle: property.title,
-                      tenantName,
-                      tenantEmail,
-                      tenantPhone,
-                    },
-                    createdAt: bookingRequest.createdAt,
-                  });
+                      // Also store in localStorage for fallback (not mandatory)
+                      const bookingRequest = {
+                        id: `booking-${Date.now()}`,
+                        propertyId: property.id,
+                        propertyTitle: property.title,
+                        tenantName,
+                        tenantPhone,
+                        tenantEmail,
+                        moveInDate,
+                        duration,
+                        message,
+                        createdAt: new Date().toISOString(),
+                      };
 
-                  setStatusMessage("Your booking request has been sent.");
-                  event.currentTarget.reset();
+                      const existingRequests = JSON.parse(
+                        localStorage.getItem("tenantBookingRequests") || "[]",
+                      );
+                      localStorage.setItem(
+                        "tenantBookingRequests",
+                        JSON.stringify([bookingRequest, ...existingRequests]),
+                      );
+
+                      // Add admin notification (legacy)
+                      addAdminNotification({
+                        type: "booking",
+                        title: "New tenant booking request",
+                        message: `${tenantName} requested ${property.title}.`,
+                        meta: {
+                          propertyId: property.id,
+                          propertyTitle: property.title,
+                          tenantName,
+                          tenantEmail,
+                          tenantPhone,
+                        },
+                        createdAt: bookingRequest.createdAt,
+                      });
+                    }
+                  } catch (err) {
+                    console.error("Booking error:", err);
+                    setErrorMessage(
+                      err?.message ||
+                        "Failed to send booking request. Please try again.",
+                    );
+                  } finally {
+                    setSubmitting(false);
+                  }
                 }}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -280,13 +319,19 @@ const OrderNow = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8 shadow-sm"
+                  disabled={submitting}
+                  className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8 shadow-sm"
                 >
-                  Confirm Booking Request
+                  {submitting ? "Sending..." : "Confirm Booking Request"}
                 </button>
                 {statusMessage ? (
                   <p className="mt-3 text-sm font-medium text-green-600">
-                    {statusMessage}
+                    ✓ {statusMessage}
+                  </p>
+                ) : null}
+                {errorMessage ? (
+                  <p className="mt-3 text-sm font-medium text-red-600">
+                    ✗ {errorMessage}
                   </p>
                 ) : null}
               </form>
