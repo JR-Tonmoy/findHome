@@ -1,6 +1,6 @@
-import { Bell, CheckCircle, Trash2 } from "lucide-react";
+import { Bell, CheckCircle, CreditCard, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   deleteNotification,
   fetchNotifications,
@@ -8,6 +8,7 @@ import {
 } from "../../../utils/notificationService";
 
 const NotificationsPage = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +73,8 @@ const NotificationsPage = () => {
         return "✅";
       case "booking_rejected":
         return "❌";
+      case "payment_completed":
+        return "💳";
       default:
         return "🔔";
     }
@@ -85,9 +88,24 @@ const NotificationsPage = () => {
         return "bg-green-50 border-green-200";
       case "booking_rejected":
         return "bg-red-50 border-red-200";
+      case "payment_completed":
+        return "bg-emerald-50 border-emerald-200";
       default:
         return "bg-gray-50 border-gray-200";
     }
+  };
+
+  const canPayNow = (notification) =>
+    notification.type === "booking_approved" && notification.booking?.id;
+
+  const handlePayNow = (notification) => {
+    const bookingId = notification.booking?.id;
+
+    if (!bookingId) {
+      return;
+    }
+
+    navigate(`/dashboard/payments/${bookingId}`);
   };
 
   return (
@@ -193,6 +211,15 @@ const NotificationsPage = () => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {canPayNow(notification) ? (
+                        <button
+                          onClick={() => handlePayNow(notification)}
+                          className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition"
+                          title="Pay now"
+                        >
+                          <CreditCard size={20} />
+                        </button>
+                      ) : null}
                       {!notification.is_read && (
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}

@@ -4,6 +4,7 @@ const NOTIFICATION_API_URL = API_BASE_URL
   ? `${API_BASE_URL}/api/v1/notifications`
   : "";
 const BOOKING_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/bookings` : "";
+const PAYMENT_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/payments` : "";
 
 const getAuthToken = () => {
   try {
@@ -178,6 +179,49 @@ export const fetchTenantBookings = async () => {
   } catch (err) {
     console.warn("Failed to fetch tenant bookings:", err);
     return { data: [] };
+  }
+};
+
+/**
+ * Fetch tenant payment history.
+ */
+export const fetchTenantPayments = async (tenantId) => {
+  if (!PAYMENT_API_URL || !tenantId) return { data: [] };
+
+  try {
+    const response = await requestJson(
+      `${PAYMENT_API_URL}/tenant/${tenantId}`,
+      {
+        method: "GET",
+      },
+    );
+    return response || { data: [] };
+  } catch (err) {
+    console.warn("Failed to fetch tenant payments:", err);
+    return { data: [] };
+  }
+};
+
+/**
+ * Initiate a booking payment and receive the SSLCommerz gateway URL.
+ */
+export const initiateBookingPayment = async ({ bookingId, paymentMethod }) => {
+  if (!PAYMENT_API_URL) {
+    throw new Error("Payment API URL is not configured.");
+  }
+
+  try {
+    const response = await requestJson(`${PAYMENT_API_URL}/initiate`, {
+      method: "POST",
+      body: JSON.stringify({
+        booking_id: bookingId,
+        payment_method: paymentMethod,
+      }),
+    });
+    return response?.data || null;
+  } catch (err) {
+    console.error("Failed to initiate booking payment:", err);
+    throw err;
   }
 };
 

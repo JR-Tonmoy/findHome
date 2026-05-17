@@ -10,6 +10,8 @@ import AdminNotifications from "../pages/Admin/Dashboard/Notifications";
 import AdminOwner from "../pages/Admin/Dashboard/Owner";
 import PaymentReports from "../pages/Admin/Dashboard/PaymentReports";
 import AdminProfile from "../pages/Admin/Dashboard/Profile";
+import RevenueAnalytics from "../pages/Admin/Dashboard/RevenueAnalytics";
+import Subscription from "../pages/Admin/Dashboard/Subscription";
 import AdminUsers from "../pages/Admin/Dashboard/Users";
 import EarnMoney from "../pages/EarnMoney/EarnMoney";
 import ForgotPassword from "../pages/Forgot-Password/Forgot-Password";
@@ -19,7 +21,7 @@ import NotFound from "../pages/NotFound";
 import AddProperty from "../pages/Owner/Dashboard/AddProperty";
 import MyProperties from "../pages/Owner/Dashboard/MyProperties";
 import OwnerNotifications from "../pages/Owner/Dashboard/Notifications"; // Owner Notifications
-import OwnerProfile from "../pages/Owner/Dashboard/OwnerProfile"; // ইমপোর্ট করলাম OwnerProfile
+import OwnerProfile from "../pages/Owner/Dashboard/OwnerProfile"; // Import korlam OwnerProfile
 import OwnerPayments from "../pages/Owner/Dashboard/Payments";
 import Register from "../pages/Registration/Registration";
 import Unauthorized from "../pages/Unauthorized";
@@ -30,6 +32,7 @@ import Dashboard from "../pages/User/Dashboard/Dashboard";
 import MyRequests from "../pages/User/Dashboard/MyRequests";
 import Notifications from "../pages/User/Dashboard/Notifications"; // Tenant Notifications
 import Orders from "../pages/User/Dashboard/Orders";
+import PaymentCheckout from "../pages/User/Dashboard/PaymentCheckout";
 import PaymentHistory from "../pages/User/Dashboard/PaymentHistory";
 import Profile from "../pages/User/Dashboard/Profile";
 import PropertyOwnerDashboard from "../pages/User/Dashboard/PropertyOwnerDashboard"; // ১। এখানে প্রোপ্রার্টি ওনার এর ড্যাশবোর্ড ইমপোর্ট করলাম
@@ -89,11 +92,16 @@ const Routers = () => {
         <Route path="bookings" element={<BookingManagement />} />
         {/* /admin/payments */}
         <Route path="payments" element={<PaymentReports />} />
+        {/* /admin/revenue (Revenue Analytics) */}
+        <Route path="revenue" element={<RevenueAnalytics />} />
+        {/* /admin/subscription (Earn Money) */}
+        <Route path="subscription" element={<Subscription />} />
+        <Route path="earn-money" element={<Subscription />} />
       </Route>
 
       {/* 
-        ড্যাশবোর্ড এর ভেতর অন্য পেজ দেখানোর জন্য Nested Route ব্যবহার করা হচ্ছে। 
-        DashboardLayout এর ভেতরে <Outlet /> আছে, যেখানে নিচের পেজগুলো লোড হবে।
+      Dashboard ar vitor onno page dakhonor jonno Nested Route babogar kora hosca
+      DashboardLayout ar vitor outlate acha, jakan a netcha load hoba
       */}
       <Route
         path="/dashboard"
@@ -110,10 +118,11 @@ const Routers = () => {
         <Route path="saved" element={<SavedHouses />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="payments" element={<PaymentHistory />} />
+        <Route path="payments/:bookingId" element={<PaymentCheckout />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
-      {/* ২। প্রোপার্টি ওনার এর জন্য আলাদা একটি রাউট তৈরি করলাম। যাতে আলাদা ড্যাশবোর্ড দেখতে পাওয়া যায়। */}
+      {/*Page ti owner ar jonno alada akti routes toire korlam. Jatha alada dashboard dakta pawa jai.  */}
       <Route
         path="/owner-dashboard"
         element={

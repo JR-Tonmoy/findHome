@@ -1,9 +1,10 @@
-import { BedDouble, Filter, MapPin, Trash2 } from "lucide-react";
+import { BedDouble, MapPin, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   deleteProperty,
   fetchAllProperties,
+  fetchPropertiesByLocation,
 } from "../../../utils/propertyStorage";
 
 const ManageProperties = () => {
@@ -11,8 +12,6 @@ const ManageProperties = () => {
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [locationFilter, setLocationFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [priceFilter, setPriceFilter] = useState("");
 
   useEffect(() => {
     const loadProperties = async () => {
@@ -39,29 +38,42 @@ const ManageProperties = () => {
     };
   }, []);
 
-  // Apply filters
+  // Apply simplified location search
   useEffect(() => {
-    let filtered = properties;
+    let isActive = true;
 
-    if (locationFilter) {
-      filtered = filtered.filter((prop) =>
-        prop.location.toLowerCase().includes(locationFilter.toLowerCase()),
-      );
-    }
+    const applyLocationSearch = async () => {
+      const query = locationFilter.trim();
 
-    if (typeFilter) {
-      filtered = filtered.filter((prop) =>
-        prop.type.toLowerCase().includes(typeFilter.toLowerCase()),
-      );
-    }
+      setLoading(true);
 
-    if (priceFilter) {
-      const maxPrice = parseInt(priceFilter);
-      filtered = filtered.filter((prop) => parseInt(prop.price) <= maxPrice);
-    }
+      try {
+        if (!query) {
+          if (isActive) {
+            setFilteredProperties(properties);
+          }
+          return;
+        }
 
-    setFilteredProperties(filtered);
-  }, [properties, locationFilter, typeFilter, priceFilter]);
+        const searchedProperties = await fetchPropertiesByLocation(query);
+
+        if (isActive) {
+          setFilteredProperties(searchedProperties);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(applyLocationSearch, 250);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [properties, locationFilter]);
 
   const handleDeleteProperty = async (propertyId) => {
     if (window.confirm("Are you sure you want to delete this property?")) {
@@ -79,44 +91,16 @@ const ManageProperties = () => {
       {/* Header section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">All Properties</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-gray-500 mt-1 mb-4">
           Total Properties: {filteredProperties.length}
         </p>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row gap-4 items-center">
         <input
           type="text"
-          placeholder="Search location..."
+          placeholder="Search by location"
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full sm:w-96 h-11 px-4 rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
         />
-        <input
-          type="text"
-          placeholder="Property Type"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-        />
-        <input
-          type="number"
-          placeholder="Max Price (BDT)"
-          value={priceFilter}
-          onChange={(e) => setPriceFilter(e.target.value)}
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          onClick={() => {
-            setLocationFilter("");
-            setTypeFilter("");
-            setPriceFilter("");
-          }}
-          className="w-full md:w-auto px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 flex items-center justify-center gap-2"
-        >
-          <Filter size={18} /> Clear Filters
-        </button>
       </div>
 
       {/* Loading State */}
@@ -135,7 +119,7 @@ const ManageProperties = () => {
             {filteredProperties.map((property) => (
               <div
                 key={property.id}
-                className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
                 {/* Image Box */}
                 <div className="h-48 overflow-hidden relative">
@@ -146,6 +130,25 @@ const ManageProperties = () => {
                     alt={property.title}
                     className="w-full h-full object-cover"
                   />
+                  <span
+                    className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      String(
+                        property.status || property.raw?.status || "available",
+                      )
+                        .toLowerCase()
+                        .includes("available")
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {String(
+                      property.status || property.raw?.status || "Available",
+                    )
+                      .toLowerCase()
+                      .includes("available")
+                      ? "Available"
+                      : "Currently Occupied"}
+                  </span>
                 </div>
 
                 {/* Content Box */}
@@ -192,9 +195,9 @@ const ManageProperties = () => {
                     </div>
                     <Link
                       to={`/property/${property.id}`}
-                      className="text-black text-sm font-semibold hover:underline"
+                      className="inline-flex items-center rounded-lg border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-black hover:text-white transition-colors"
                     >
-                      Details
+                      View Details
                     </Link>
                   </div>
                 </div>

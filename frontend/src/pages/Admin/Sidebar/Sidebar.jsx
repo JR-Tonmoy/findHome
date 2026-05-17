@@ -6,6 +6,7 @@ import {
   Home,
   LayoutDashboard,
   LogOut,
+  TrendingUp,
   UserRound,
   Users,
   X,
@@ -16,20 +17,21 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import Logo from "../../../components/Logo/Logo";
 import { logoutSuccess } from "../../../features/auth/authSlice";
 import useAuth from "../../../hooks/useAuth";
-import { getAdminProfile } from "../../../utils/memberStorage";
+import { getAvatarUrl } from "../../../utils/avatarHelper";
 
 const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const adminProfile = getAdminProfile();
   const syncedProfile = {
-    ...adminProfile,
     ...user,
-    avatar: user?.avatar || user?.profile_image || adminProfile.avatar || "",
+    avatar: getAvatarUrl(user),
   };
   const adminName =
-    syncedProfile.fullName || syncedProfile.name || "Admin User";
+    syncedProfile.fullName ||
+    syncedProfile.name ||
+    syncedProfile.email ||
+    "Admin User";
   const adminEmail = syncedProfile.email || "admin@bashalagbe.com";
 
   const handleLogout = () => {
@@ -58,6 +60,11 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
     },
     { label: "Bookings", path: "/admin/bookings", icon: <Book size={20} /> },
     {
+      label: "Revenue Analytics",
+      path: "/admin/revenue",
+      icon: <TrendingUp size={20} />,
+    },
+    {
       label: "Payments",
       path: "/admin/payments",
       icon: <DollarSign size={20} />,
@@ -77,10 +84,10 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
       <div
         className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 w-64 z-50 transform transition-transform duration-300 md:translate-x-0 
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        flex flex-col shadow-lg`}
+        flex flex-col shadow-lg overflow-hidden`}
       >
-        <div className="flex h-full flex-col justify-between">
-          <div>
+        <div className="flex h-full flex-col justify-between overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {/* Brand Logo */}
             <div className="flex justify-between items-center px-6 py-5 border-b border-gray-200">
               <div className="flex-1">
@@ -104,15 +111,11 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
               <div className="rounded-2xl bg-linear-to-b from-blue-50 to-white border border-blue-100 shadow-sm px-4 py-4 text-center">
                 <div className="mx-auto p-0.5 w-fit rounded-full border-2 border-[#007BFF] shadow-sm">
                   <div className="w-16 h-16 rounded-full bg-[#eef2ff] overflow-hidden flex items-center justify-center border-2 border-white">
-                    {syncedProfile.avatar ? (
-                      <img
-                        src={syncedProfile.avatar}
-                        alt={adminName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <UserRound size={26} className="text-[#4f46e5]" />
-                    )}
+                    <img
+                      src={syncedProfile.avatar}
+                      alt={adminName}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 </div>
                 <h3 className="mt-3 text-[16px] font-bold text-gray-900 tracking-tight">

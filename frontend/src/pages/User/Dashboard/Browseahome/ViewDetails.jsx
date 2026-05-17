@@ -237,46 +237,106 @@ const ViewDetails = () => {
               </h3>
 
               <div className="space-y-5">
-                <div>
+                {/* Owner Profile Image */}
+                <div className="flex justify-center mb-4">
+                  <div className="w-20 h-20 bg-linear-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                    {property.owner?.profile_image || property.owner?.avatar ? (
+                      <img
+                        src={
+                          property.owner.profile_image || property.owner.avatar
+                        }
+                        alt={property.owner.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.nextElementSibling.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-400 to-blue-600 text-white text-2xl font-bold"
+                      style={{
+                        display:
+                          property.owner?.profile_image ||
+                          property.owner?.avatar
+                            ? "none"
+                            : "flex",
+                      }}
+                    >
+                      {property.owner.name
+                        ? property.owner.name.charAt(0).toUpperCase()
+                        : "O"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Owner Name */}
+                <div className="text-center">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">
                     Owner Name
                   </p>
                   <p className="font-bold text-gray-800 text-lg">
-                    {property.owner.name}
+                    {property.owner?.name || "Property Owner"}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gray-50 rounded-lg">
-                    <Phone size={20} className="text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
-                      Phone
-                    </p>
-                    <p className="font-bold text-gray-800">
-                      {property.owner.phone && property.owner.phone !== "N/A"
-                        ? property.owner.phone
-                        : user?.phone || storedProfile?.phone || "N/A"}
-                    </p>
-                  </div>
-                </div>
+                {/* Phone */}
+                {property.owner?.phone && property.owner.phone !== "N/A" && (
+                  <a
+                    href={`tel:${property.owner.phone}`}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer group"
+                  >
+                    <div className="p-2.5 bg-white rounded-lg group-hover:bg-blue-100 transition-colors">
+                      <Phone
+                        size={20}
+                        className="text-gray-600 group-hover:text-blue-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
+                        Phone
+                      </p>
+                      <p className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                        {property.owner.phone}
+                      </p>
+                    </div>
+                  </a>
+                )}
 
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gray-50 rounded-lg">
-                    <Mail size={20} className="text-gray-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
-                      Email
-                    </p>
-                    <p className="font-bold text-gray-800">
-                      {property.owner.email && property.owner.email !== "N/A"
-                        ? property.owner.email
-                        : user?.email || storedProfile?.email || "N/A"}
-                    </p>
-                  </div>
-                </div>
+                {/* Email */}
+                {property.owner?.email && property.owner.email !== "N/A" && (
+                  <a
+                    href={`mailto:${property.owner.email}`}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer group"
+                  >
+                    <div className="p-2.5 bg-white rounded-lg group-hover:bg-blue-100 transition-colors">
+                      <Mail
+                        size={20}
+                        className="text-gray-600 group-hover:text-blue-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">
+                        Email
+                      </p>
+                      <p className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors break-all">
+                        {property.owner.email}
+                      </p>
+                    </div>
+                  </a>
+                )}
+
+                {/* Fallback if no contact info */}
+                {(!property.owner?.phone || property.owner.phone === "N/A") &&
+                  (!property.owner?.email ||
+                    property.owner.email === "N/A") && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        Contact information not available. Please check back
+                        later.
+                      </p>
+                    </div>
+                  )}
               </div>
 
               <Link

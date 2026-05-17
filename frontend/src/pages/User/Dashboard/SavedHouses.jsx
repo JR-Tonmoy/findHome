@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import useAuth from "../../../hooks/useAuth";
 import { getSavedProperties } from "../../../utils/savedPropertyStorage";
 
 const SavedHouses = () => {
-  const currentMember = getCurrentMemberProfile();
+  const { user } = useAuth();
+  const currentEmail = user?.email || "";
   const [savedProperties, setSavedProperties] = useState(() =>
-    getSavedProperties(currentMember.email),
+    getSavedProperties(currentEmail),
   );
 
   useEffect(() => {
     const refreshSavedProperties = () => {
-      setSavedProperties(getSavedProperties(currentMember.email));
+      setSavedProperties(getSavedProperties(currentEmail));
     };
 
     refreshSavedProperties();
@@ -25,7 +26,7 @@ const SavedHouses = () => {
       );
       window.removeEventListener("storage", refreshSavedProperties);
     };
-  }, [currentMember.email]);
+  }, [currentEmail]);
 
   return (
     <div className="p-6">

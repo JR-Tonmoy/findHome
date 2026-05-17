@@ -114,7 +114,7 @@ const normalizeMemberRecord = (member = {}) => ({
   role: member.role || "tenant",
   username: getUsername(member),
   date: member.date || member.registeredDate || "N/A",
-  avatar: member.avatar || "",
+  avatar: member.avatar || "/default-profile.png",
 });
 
 const getCurrentMemberProfile = () => {

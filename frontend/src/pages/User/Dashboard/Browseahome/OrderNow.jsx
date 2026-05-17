@@ -1,17 +1,14 @@
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle,
-  CreditCard,
-  MapPin,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, CreditCard, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Logo from "../../../../components/Logo/Logo";
 import useAuth from "../../../../hooks/useAuth";
 import { addAdminNotification } from "../../../../utils/adminNotificationStorage";
 import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
-import { createBooking } from "../../../../utils/notificationService";
+import {
+  createBooking,
+  fetchTenantBookings,
+} from "../../../../utils/notificationService";
 import { resolvePublicPropertyById } from "../../../../utils/publicPropertyResolver";
 
 const OrderNow = () => {
@@ -23,6 +20,7 @@ const OrderNow = () => {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   useEffect(() => {
     let isMounted = true;
@@ -151,7 +149,7 @@ const OrderNow = () => {
                         "",
                     ).trim();
                     const moveInDate = String(
-                      formData.get("moveInDate") || "",
+                      formData.get("moveInDate") || todayStr,
                     ).trim();
                     const duration = String(
                       formData.get("duration") || "6",
@@ -159,6 +157,39 @@ const OrderNow = () => {
                     const message = String(
                       formData.get("message") || "",
                     ).trim();
+
+                    // Client-side validations
+                    if (!moveInDate) {
+                      throw new Error("Please select a valid move-in date.");
+                    }
+
+                    // Prevent selecting past dates
+                    if (moveInDate < todayStr) {
+                      throw new Error("Move-in date cannot be in the past.");
+                    }
+
+                    // Prevent duplicate bookings for the same property
+                    try {
+                      const tenantBookingsResp = await fetchTenantBookings();
+                      const tenantBookings = tenantBookingsResp?.data || [];
+                      const alreadyBooked = tenantBookings.some(
+                        (b) =>
+                          Number(b.property_id) === Number(property.id) &&
+                          ["pending", "approved"].includes(String(b.status)),
+                      );
+
+                      if (alreadyBooked) {
+                        throw new Error(
+                          "You already have a pending or approved booking for this property.",
+                        );
+                      }
+                    } catch (checkErr) {
+                      // If fetching tenant bookings failed, log but continue to attempt booking
+                      console.warn(
+                        "Could not verify existing bookings:",
+                        checkErr,
+                      );
+                    }
 
                     // Create booking via API
                     const booking = await createBooking({
@@ -268,17 +299,15 @@ const OrderNow = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Expected Move-in Date
                     </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-3 text-gray-400"
-                        size={20}
-                      />
-                      <input
-                        name="moveInDate"
-                        type="date"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
-                    </div>
+                    <input
+                      name="moveInDate"
+                      type="date"
+                      min={todayStr}
+                      defaultValue={todayStr}
+                      placeholder="MM/DD/YYYY"
+                      lang="en-US"
+                      className="w-full h-12 px-4 text-base text-gray-800 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all [color-scheme:light]"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -319,11 +348,28 @@ const OrderNow = () => {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting ||
+                    (property &&
+                      String(
+                        property.status || property.raw?.status || "available",
+                      )
+                        .toLowerCase()
+                        .includes("available") === false)
+                  }
                   className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8 shadow-sm"
                 >
                   {submitting ? "Sending..." : "Confirm Booking Request"}
                 </button>
+                {property &&
+                !String(property.status || property.raw?.status || "available")
+                  .toLowerCase()
+                  .includes("available") ? (
+                  <p className="mt-3 text-sm font-medium text-red-600">
+                    ✗ This property is currently occupied and not available for
+                    booking.
+                  </p>
+                ) : null}
                 {statusMessage ? (
                   <p className="mt-3 text-sm font-medium text-green-600">
                     ✓ {statusMessage}

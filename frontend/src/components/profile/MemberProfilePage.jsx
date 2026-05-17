@@ -13,15 +13,12 @@ import { useDispatch } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { updateUserProfileSuccess } from "../../features/auth/authSlice";
 import useAuth from "../../hooks/useAuth";
+import { getAvatarUrl } from "../../utils/avatarHelper";
 import {
-  getCurrentMemberProfile,
-  syncCurrentMemberProfile,
-} from "../../utils/memberStorage";
-import {
-  fetchUserProfile,
+  fetchProfileByRole,
+  updateProfileByRole,
   updateUserPassword,
-  updateUserProfile,
-  uploadProfileImage,
+  uploadProfileImageByRole,
 } from "../../utils/userProfileService";
 
 const inputBaseClass =
@@ -36,25 +33,39 @@ const MemberProfilePage = ({
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const currentRole = (
+    user?.role ||
+    localStorage.getItem("userRole") ||
+    "tenant"
+  ).toLowerCase();
+
+  const displayRoleLabel =
+    user?.role ||
+    roleLabel ||
+    currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
 
   const initialProfile = useMemo(() => {
-    const stored = getCurrentMemberProfile();
+    const source = user || {};
 
     return {
-      fullName: stored.fullName || fallbackName,
-      email: stored.email || "N/A",
-      phone: stored.phone || "N/A",
-      location: stored.location || "Dhaka, Bangladesh",
-      bio: stored.bio || "Tell people a little about yourself.",
-      joined: stored.date || "N/A",
-      role: roleLabel,
-      avatar: stored.avatar || "",
-      password: stored.password || "",
+      fullName: source.fullName || source.name || fallbackName,
+      email: source.email || "N/A",
+      phone: source.phone || "N/A",
+      location: source.location || "Dhaka, Bangladesh",
+      bio: source.bio || "Tell people a little about yourself.",
+      joined: source.date || source.created_at || "N/A",
+      role: displayRoleLabel,
+      avatar: getAvatarUrl(source),
+      password: "",
     };
-  }, [fallbackName, roleLabel]);
+  }, [displayRoleLabel, fallbackName]);
+
+  const userSnapshotKey = `${user?.id || ""}-${user?.email || ""}-${currentRole}`;
 
   const [savedProfile, setSavedProfile] = useState(initialProfile);
-  const [photoPreview, setPhotoPreview] = useState(initialProfile.avatar);
+  const [photoPreview, setPhotoPreview] = useState(
+    initialProfile.avatar || getAvatarUrl(initialProfile),
+  );
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,7 +93,7 @@ const MemberProfilePage = ({
       setErrorMessage("");
 
       try {
-        const backendProfile = await fetchUserProfile();
+        const backendProfile = await fetchProfileByRole(currentRole);
         if (!active || !backendProfile) return;
 
         const mergedProfile = {
@@ -90,30 +101,28 @@ const MemberProfilePage = ({
             backendProfile.fullName || backendProfile.name || fallbackName,
           email: backendProfile.email || "N/A",
           phone: backendProfile.phone || "N/A",
-          location: savedProfile.location || "Dhaka, Bangladesh",
-          bio: savedProfile.bio || "Tell people a little about yourself.",
-          joined: savedProfile.joined || "N/A",
-          role: backendProfile.role || roleLabel,
-          avatar: backendProfile.avatar || backendProfile.profile_image || "",
+          location:
+            backendProfile.location ||
+            initialProfile.location ||
+            "Dhaka, Bangladesh",
+          bio:
+            backendProfile.bio ||
+            initialProfile.bio ||
+            "Tell people a little about yourself.",
+          joined: backendProfile.joined || initialProfile.joined || "N/A",
+          role: backendProfile.role || displayRoleLabel,
+          avatar: backendProfile.avatar || backendProfile.profile_image || null,
           password: "",
         };
 
         setSavedProfile(mergedProfile);
-        setPhotoPreview(mergedProfile.avatar);
+        setPhotoPreview(getAvatarUrl(mergedProfile));
         setProfileForm((current) => ({
           ...current,
           fullName: mergedProfile.fullName,
           email: mergedProfile.email,
           phone: mergedProfile.phone,
         }));
-
-        syncCurrentMemberProfile({
-          fullName: mergedProfile.fullName,
-          name: mergedProfile.fullName,
-          email: mergedProfile.email,
-          phone: mergedProfile.phone,
-          avatar: mergedProfile.avatar,
-        });
 
         dispatch(
           updateUserProfileSuccess({
@@ -137,7 +146,7 @@ const MemberProfilePage = ({
     return () => {
       active = false;
     };
-  }, [dispatch, fallbackName, roleLabel]);
+  }, [currentRole, dispatch, displayRoleLabel, fallbackName, userSnapshotKey]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: backFrom }} />;
@@ -219,22 +228,28 @@ const MemberProfilePage = ({
       let uploadedProfile = null;
 
       if (selectedImageFile) {
-        uploadedProfile = await uploadProfileImage(selectedImageFile, false);
+        uploadedProfile = await uploadProfileImageByRole(
+          selectedImageFile,
+          currentRole,
+        );
       }
 
-      const updatedProfile = await updateUserProfile({
-        name: profileForm.fullName,
-        email: profileForm.email,
-        phone: profileForm.phone,
-        avatar:
-          uploadedProfile?.avatar ||
-          uploadedProfile?.profile_image ||
-          photoPreview,
-        profile_image:
-          uploadedProfile?.profile_image ||
-          uploadedProfile?.avatar ||
-          photoPreview,
-      });
+      const updatedProfile = await updateProfileByRole(
+        {
+          name: profileForm.fullName,
+          email: profileForm.email,
+          phone: profileForm.phone,
+          avatar:
+            uploadedProfile?.avatar ||
+            uploadedProfile?.profile_image ||
+            photoPreview,
+          profile_image:
+            uploadedProfile?.profile_image ||
+            uploadedProfile?.avatar ||
+            photoPreview,
+        },
+        currentRole,
+      );
 
       if (passwordForm.newPassword) {
         await updateUserPassword(
@@ -258,12 +273,12 @@ const MemberProfilePage = ({
           updatedProfile?.avatar ||
           updatedProfile?.profile_image ||
           photoPreview ||
-          "",
+          null,
         password: "",
       };
 
       setSavedProfile(nextProfile);
-      setPhotoPreview(nextProfile.avatar);
+      setPhotoPreview(getAvatarUrl(nextProfile));
       setSelectedImageFile(null);
       setPasswordForm({
         currentPassword: "",
@@ -271,16 +286,6 @@ const MemberProfilePage = ({
         confirmPassword: "",
       });
       setIsEditing(false);
-
-      syncCurrentMemberProfile({
-        fullName: nextProfile.fullName,
-        name: nextProfile.fullName,
-        email: nextProfile.email,
-        phone: nextProfile.phone,
-        avatar: nextProfile.avatar,
-        location: nextProfile.location,
-        bio: nextProfile.bio,
-      });
 
       dispatch(
         updateUserProfileSuccess({
@@ -290,8 +295,8 @@ const MemberProfilePage = ({
           email: nextProfile.email,
           phone: nextProfile.phone,
           role: nextProfile.role,
-          avatar: nextProfile.avatar,
-          profile_image: nextProfile.avatar,
+          avatar: nextProfile.avatar || getAvatarUrl(nextProfile),
+          profile_image: nextProfile.avatar || getAvatarUrl(nextProfile),
         }),
       );
 

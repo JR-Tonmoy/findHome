@@ -1,16 +1,9 @@
-import {
-  Camera,
-  Edit3,
-  Eye,
-  EyeOff,
-  Mail,
-  Save,
-  UserRound,
-} from "lucide-react";
+import { Camera, Edit3, Eye, EyeOff, Mail, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { updateUserProfileSuccess } from "../../../features/auth/authSlice";
+import { getAvatarUrl } from "../../../utils/avatarHelper";
 import {
   fetchAdminProfile,
   updateAdminProfile,
@@ -35,11 +28,11 @@ const AdminProfile = () => {
     name: "",
     email: "",
     phone: "",
-    avatar: null,
+    avatar: getAvatarUrl(null),
     role: "admin",
   });
 
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(getAvatarUrl(null));
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -71,10 +64,11 @@ const AdminProfile = () => {
             name: profile.name || "",
             email: profile.email || "",
             phone: profile.phone || "",
-            avatar: profile.avatar || profile.profile_image || null,
+            avatar:
+              profile.avatar || profile.profile_image || getAvatarUrl(null),
             role: profile.role || "admin",
           });
-          setPhotoPreview(profile.avatar || profile.profile_image || null);
+          setPhotoPreview(getAvatarUrl(profile));
           setProfileForm({
             name: profile.name || "",
             email: profile.email || "",
@@ -84,7 +78,7 @@ const AdminProfile = () => {
           dispatch(
             updateUserProfileSuccess({
               ...profile,
-              avatar: profile.avatar || profile.profile_image || "",
+              avatar: getAvatarUrl(profile),
             }),
           );
         }
@@ -206,10 +200,13 @@ const AdminProfile = () => {
       if (updatedProfile) {
         const mergedProfile = {
           ...updatedProfile,
-          avatar: updatedProfile.avatar || updatedProfile.profile_image || "",
+          avatar:
+            updatedProfile.avatar ||
+            updatedProfile.profile_image ||
+            getAvatarUrl(updatedProfile),
         };
         setSavedProfile(mergedProfile);
-        setPhotoPreview(mergedProfile.avatar);
+        setPhotoPreview(getAvatarUrl(mergedProfile));
         setSelectedImageFile(null);
 
         localStorage.setItem("adminProfile", JSON.stringify(mergedProfile));
@@ -252,7 +249,7 @@ const AdminProfile = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6 md:px-0 md:py-8 min-h-[calc(100vh-80px)] flex items-center justify-center">
+      <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 lg:px-8 md:py-8 w-full flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
           <p className="mt-4 text-gray-600">Loading profile...</p>
@@ -262,7 +259,7 @@ const AdminProfile = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 md:px-0 md:py-8 min-h-[calc(100vh-80px)]">
+    <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 lg:px-8 md:py-8 w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Admin Profile</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -297,15 +294,11 @@ const AdminProfile = () => {
               {/* Avatar */}
               <div className="relative w-fit">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-[#4338ca] text-white shadow-[0_16px_32px_rgba(67,56,202,0.28)]">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt={displayName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <UserRound size={48} />
-                  )}
+                  <img
+                    src={photoPreview}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity hover:opacity-100">
                   <Camera size={18} className="text-white" />

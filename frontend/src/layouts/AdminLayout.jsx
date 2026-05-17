@@ -29,7 +29,7 @@ const AdminLayout = () => {
         ml-64 মানে মার্জিন লেফট, যা সাইডবারের জায়গা ছেড়ে দিবে (শুধু ডেস্কটপে md:ml-64)।
         Outlet এর কারণে এখানে রাউট অনুযায়ী অন্য পেজ লোড হবে।
       */}
-      <div className="flex-1 md:ml-64 p-4 md:p-6 lg:p-12 pt-16 md:pt-6 w-full lg:w-auto h-screen overflow-y-auto">
+      <div className="flex-1 md:ml-64 p-4 md:p-6 lg:p-8 pt-16 md:pt-6 w-full overflow-y-auto">
         <Outlet />
       </div>
     </div>

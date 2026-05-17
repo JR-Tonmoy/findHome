@@ -5,7 +5,7 @@ import {
   DISTRICTS_BY_DIVISION,
   LOCATION_TREE,
 } from "../../../../constants";
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import useAuth from "../../../hooks/useAuth";
 import {
   deleteProperty,
   fetchPropertyById,
@@ -27,12 +27,12 @@ const AddProperty = () => {
   const [searchParams] = useSearchParams();
   const propertyId = searchParams.get("propertyId");
   const [editingProperty, setEditingProperty] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     let active = true;
 
     if (!propertyId) {
-      setEditingProperty(null);
       return;
     }
 
@@ -42,7 +42,7 @@ const AddProperty = () => {
         if (active) {
           setEditingProperty(prop);
         }
-      } catch (err) {
+      } catch {
         if (active) setEditingProperty(null);
       }
     })();
@@ -59,7 +59,7 @@ const AddProperty = () => {
   const [imageInputKey, setImageInputKey] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const currentOwner = getCurrentMemberProfile();
+  const currentOwner = user || {};
   const isEditing = Boolean(editingProperty);
 
   const isDivisionSelected = Boolean(DISTRICTS_BY_DIVISION[division]);

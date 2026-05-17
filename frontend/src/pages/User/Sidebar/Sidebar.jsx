@@ -14,24 +14,16 @@ import { NavLink, useNavigate } from "react-router-dom";
 import Logo from "../../../components/Logo/Logo";
 import { logoutSuccess } from "../../../features/auth/authSlice";
 import useAuth from "../../../hooks/useAuth";
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import { getAvatarUrl } from "../../../utils/avatarHelper";
 
 const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const memberProfile = getCurrentMemberProfile();
   const syncedProfile = {
-    ...memberProfile,
     ...user,
-    avatar: user?.avatar || user?.profile_image || memberProfile.avatar || "",
+    avatar: getAvatarUrl(user),
   };
-
-  const profileInitial =
-    (syncedProfile.fullName || syncedProfile.name || "T")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "T";
 
   const handleLogout = () => {
     dispatch(logoutSuccess());
@@ -114,19 +106,15 @@ const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
           <div className="mx-4 mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
             <div className="flex items-center gap-3">
               <div className="h-11 w-11 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm overflow-hidden">
-                {syncedProfile.avatar ? (
-                  <img
-                    src={syncedProfile.avatar}
-                    alt={syncedProfile.fullName || syncedProfile.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  profileInitial
-                )}
+                <img
+                  src={syncedProfile.avatar}
+                  alt={syncedProfile.fullName || syncedProfile.name}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">
-                  {syncedProfile.name || syncedProfile.fullName || "Tenant"}
+                  {syncedProfile.fullName || syncedProfile.name || "Tenant"}
                 </p>
                 <p className="text-[11px] text-gray-600 truncate">
                   {syncedProfile.email || "tenant@example.com"}

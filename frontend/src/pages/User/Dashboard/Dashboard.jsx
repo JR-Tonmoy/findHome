@@ -1,14 +1,16 @@
 import { Heart } from "lucide-react"; // Import icons for stats
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // Import Link
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import useAuth from "../../../hooks/useAuth";
 import { getPublicProperties } from "../../../utils/publicPropertyFeed";
 import { getSavedPropertyCount } from "../../../utils/savedPropertyStorage";
 
 const Dashboard = () => {
-  const currentMember = getCurrentMemberProfile();
+  const { user } = useAuth();
+  const currentEmail = user?.email || "";
+  const displayName = user?.fullName || user?.name || "Tenant";
   const [savedCount, setSavedCount] = useState(() =>
-    getSavedPropertyCount(currentMember.email),
+    getSavedPropertyCount(currentEmail),
   );
   const [recommendedHouses, setRecommendedHouses] = useState([]);
 
@@ -24,7 +26,7 @@ const Dashboard = () => {
     };
 
     const refreshSavedCount = () => {
-      setSavedCount(getSavedPropertyCount(currentMember.email));
+      setSavedCount(getSavedPropertyCount(currentEmail));
     };
 
     loadRecommendedHouses();
@@ -42,13 +44,15 @@ const Dashboard = () => {
         loadRecommendedHouses,
       );
     };
-  }, [currentMember.email]);
+  }, [currentEmail]);
 
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <h1 className="text-2xl font-bold text-black">Welcome back, Tenant!</h1>
+        <h1 className="text-2xl font-bold text-black">
+          Welcome back, {displayName}!
+        </h1>
         <p className="text-black mt-2 text-sm sm:text-base">
           Here's what's happening with your property search
         </p>

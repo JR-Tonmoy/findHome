@@ -1,10 +1,4 @@
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle,
-  CreditCard,
-  MapPin,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, CreditCard, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { fetchAllProperties } from "../../../utils/propertyStorage";
@@ -13,6 +7,7 @@ const OrderProperty = () => {
   const { id } = useParams();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -115,16 +110,14 @@ const OrderProperty = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Expected Move-in Date
                       </label>
-                      <div className="relative">
-                        <Calendar
-                          className="absolute left-3 top-3 text-gray-400"
-                          size={20}
-                        />
-                        <input
-                          type="date"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        />
-                      </div>
+                      <input
+                        type="date"
+                        min={todayStr}
+                        defaultValue={todayStr}
+                        placeholder="MM/DD/YYYY"
+                        lang="en-US"
+                        className="w-full h-12 px-4 text-base text-gray-800 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all [color-scheme:light]"
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">

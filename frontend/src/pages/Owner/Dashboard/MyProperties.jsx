@@ -1,7 +1,7 @@
 import { Edit, Eye, EyeOff, MapPin, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import useAuth from "../../../hooks/useAuth";
 import {
   deleteProperty,
   getStoredProperties,
@@ -9,7 +9,8 @@ import {
 
 const MyProperties = () => {
   const navigate = useNavigate();
-  const currentOwner = getCurrentMemberProfile();
+  const { user } = useAuth();
+  const currentOwnerEmail = user?.email || "";
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredProperties, setFilteredProperties] = useState([]);
@@ -25,15 +26,15 @@ const MyProperties = () => {
         // Filter properties owned by current user
         const ownerProperties = allProperties.filter(
           (property) =>
-            property.owner?.email === currentOwner.email ||
+            property.owner?.email === currentOwnerEmail ||
             property.owner?.email === "N/A" ||
-            property.user_id === currentOwner.id,
+            property.user_id === user?.id,
         );
 
         setProperties(ownerProperties);
         setFilteredProperties(ownerProperties);
-      } catch (err) {
-        console.error("Failed to load properties:", err);
+      } catch (error) {
+        console.error("Failed to load properties:", error);
       } finally {
         setLoading(false);
       }
@@ -47,7 +48,7 @@ const MyProperties = () => {
     return () => {
       window.removeEventListener("owner-properties-updated", handleUpdate);
     };
-  }, [currentOwner.email]);
+  }, [currentOwnerEmail, user?.id]);
 
   // Filter by status
   useEffect(() => {
@@ -67,7 +68,8 @@ const MyProperties = () => {
       try {
         await deleteProperty(propertyId);
         setProperties(properties.filter((p) => p.id !== propertyId));
-      } catch (err) {
+      } catch (error) {
+        console.error("Failed to delete property:", error);
         alert("Failed to delete property");
       }
     }
@@ -184,7 +186,7 @@ const MyProperties = () => {
             >
               <div className="flex flex-col md:flex-row gap-4 p-4">
                 {/* Image */}
-                <div className="w-full md:w-48 h-40 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                <div className="w-full md:w-48 h-40 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                   <img
                     src={
                       property.image ||

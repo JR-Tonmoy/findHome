@@ -1,11 +1,13 @@
 import { Home, PlusCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentMemberProfile } from "../../../utils/memberStorage";
+import useAuth from "../../../hooks/useAuth";
 import { getStoredProperties } from "../../../utils/propertyStorage";
 
 const OwnerDashboard = () => {
-  const currentOwner = getCurrentMemberProfile();
+  const { user } = useAuth();
+  const currentOwnerEmail = user?.email || "";
+  const displayName = user?.fullName || user?.name || "Property Owner";
   const [storedProperties, setStoredProperties] = useState(() =>
     getStoredProperties(),
   );
@@ -32,22 +34,22 @@ const OwnerDashboard = () => {
   }, []);
 
   const myProperties = useMemo(() => {
-    if (!currentOwner?.email || currentOwner.email === "N/A") {
+    if (!currentOwnerEmail || currentOwnerEmail === "N/A") {
       return storedProperties;
     }
 
     return storedProperties.filter(
       (property) =>
-        property.owner?.email === currentOwner.email ||
+        property.owner?.email === currentOwnerEmail ||
         property.owner?.email === "N/A",
     );
-  }, [currentOwner?.email, storedProperties]);
+  }, [currentOwnerEmail, storedProperties]);
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
         <h1 className="text-2xl font-bold text-gray-800">
-          Welcome back, Property Owner!
+          Welcome back, {displayName}!
         </h1>
         <p className="text-gray-500 mt-2 text-sm sm:text-base">
           Manage your properties and tenants right from here.

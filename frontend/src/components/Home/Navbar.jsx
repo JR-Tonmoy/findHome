@@ -4,10 +4,7 @@ import { useDispatch } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logoutSuccess } from "../../features/auth/authSlice";
 import useAuth from "../../hooks/useAuth";
-import {
-  getAdminProfile,
-  getCurrentMemberProfile,
-} from "../../utils/memberStorage";
+import { getAvatarUrl } from "../../utils/avatarHelper";
 import Logo from "../Logo/Logo";
 import NotificationDropdown from "../Notifications/NotificationDropdown";
 
@@ -20,31 +17,16 @@ const Navbar = () => {
   const [searchValue, setSearchValue] = useState("");
   const { user, isAuthenticated } = useAuth();
 
-  const storedRole = localStorage.getItem("userRole") || "";
-  const userRole = (user?.role || storedRole).toLowerCase();
+  const userRole = (
+    user?.role ||
+    localStorage.getItem("userRole") ||
+    ""
+  ).toLowerCase();
   const isOwner = userRole === "owner" || userRole === "property owner";
   const isAdmin = userRole === "admin";
   const canAddProperty = isOwner || isAdmin;
-  const storedProfile = isAuthenticated
-    ? isAdmin
-      ? getAdminProfile()
-      : getCurrentMemberProfile()
-    : null;
-  const displayName =
-    user?.fullName ||
-    storedProfile?.fullName ||
-    user?.name ||
-    storedProfile?.name ||
-    user?.email ||
-    storedProfile?.email ||
-    "";
-  const profileAvatar =
-    user?.avatar ||
-    user?.profile_image ||
-    storedProfile?.avatar ||
-    storedProfile?.profile_image ||
-    "";
-  const displayInitial = displayName.trim().charAt(0).toUpperCase() || "U";
+  const displayName = user?.name || user?.fullName || user?.email || "";
+  const profileAvatar = getAvatarUrl(user);
 
   const profileRoute = isAdmin
     ? "/admin/profile"
@@ -105,15 +87,11 @@ const Navbar = () => {
                   onClick={() => navigate(profileRoute)}
                 >
                   <div className="w-6 h-6 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold text-xs uppercase">
-                    {profileAvatar ? (
-                      <img
-                        src={profileAvatar}
-                        alt={displayName || "Profile"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span>{displayInitial}</span>
-                    )}
+                    <img
+                      src={profileAvatar}
+                      alt={displayName || "Profile"}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 </button>
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity invisible group-hover:visible z-101">
@@ -246,16 +224,8 @@ const Navbar = () => {
             to={isAuthenticated ? "/dashboard/saved" : "/login"}
             className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"
           >
-            {isOwner ? "💵 Earn Money" : "♡ Saved Property"}
+            ♡ Saved Property
           </Link>
-          {!isOwner && (
-            <Link
-              to="/earn"
-              className="flex items-center gap-2 border-b-2 border-transparent hover:border-black"
-            >
-              💵 Earn Money
-            </Link>
-          )}
         </div>
 
         {/* Search Box */}

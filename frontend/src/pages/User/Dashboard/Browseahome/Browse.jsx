@@ -1,8 +1,11 @@
-import { BedDouble, Filter, Heart, MapPin } from "lucide-react";
+import { BedDouble, Heart, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
-import { getPublicProperties } from "../../../../utils/publicPropertyFeed";
+import {
+  fetchAllProperties,
+  fetchPropertiesByLocation,
+} from "../../../../utils/propertyStorage";
 import {
   isPropertySaved,
   toggleSavedProperty,
@@ -13,8 +16,11 @@ const Browse = () => {
   const savedStorageKey = currentMember.email;
   const [showAllProperties, setShowAllProperties] = useState(false);
   const [properties, setProperties] = useState([]);
+  const [locationQuery, setLocationQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [, setSavedVersion] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     let isActive = true;
 
@@ -22,7 +28,10 @@ const Browse = () => {
       setLoading(true);
 
       try {
-        const allProperties = await getPublicProperties();
+        const searchText = locationQuery.trim();
+        const allProperties = searchText
+          ? await fetchPropertiesByLocation(searchText)
+          : await fetchAllProperties();
 
         if (isActive) {
           setProperties(allProperties);
@@ -34,25 +43,33 @@ const Browse = () => {
       }
     };
 
-    loadProperties();
+    const timeoutId = setTimeout(loadProperties, 250);
 
     const refreshSavedState = () => {
       setSavedVersion((currentValue) => currentValue + 1);
     };
 
-    window.addEventListener("storage", loadProperties);
+    const refreshProperties = () => {
+      setReloadKey((currentValue) => currentValue + 1);
+    };
+
+    window.addEventListener("storage", refreshProperties);
     window.addEventListener("saved-properties-updated", refreshSavedState);
-    window.addEventListener("owner-properties-updated", loadProperties);
-    window.addEventListener("public-properties-updated", loadProperties);
+    window.addEventListener("owner-properties-updated", refreshProperties);
+    window.addEventListener("public-properties-updated", refreshProperties);
 
     return () => {
       isActive = false;
-      window.removeEventListener("storage", loadProperties);
+      clearTimeout(timeoutId);
+      window.removeEventListener("storage", refreshProperties);
       window.removeEventListener("saved-properties-updated", refreshSavedState);
-      window.removeEventListener("owner-properties-updated", loadProperties);
-      window.removeEventListener("public-properties-updated", loadProperties);
+      window.removeEventListener("owner-properties-updated", refreshProperties);
+      window.removeEventListener(
+        "public-properties-updated",
+        refreshProperties,
+      );
     };
-  }, []);
+  }, [locationQuery, reloadKey]);
 
   const savedPropertyMap = properties.reduce((accumulator, property) => {
     accumulator[property.id] = isPropertySaved(property.id, savedStorageKey);
@@ -69,45 +86,39 @@ const Browse = () => {
     ? properties
     : properties.slice(0, 3);
 
+  const shouldShowAllResults = locationQuery.trim().length > 0;
+  const visibleProperties = shouldShowAllResults
+    ? properties
+    : displayedProperties;
+
   return (
     <div className="p-6">
       {/* Header section */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Browse Properties</h1>
-        <p className="text-gray-500 mt-1">Find your perfect rental home</p>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row gap-4 items-center">
+        <p className="text-gray-500 mt-1 mb-4">Find your perfect rental home</p>
         <input
           type="text"
-          placeholder="Search location..."
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+          value={locationQuery}
+          onChange={(event) => setLocationQuery(event.target.value)}
+          placeholder="Search by location"
+          className="w-full sm:w-96 h-11 px-4 rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
         />
-        <input
-          type="text"
-          placeholder="Property Type"
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-        />
-        <input
-          type="number"
-          placeholder="Max Price (BDT)"
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button className="w-full md:w-auto px-6 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black flex items-center justify-center gap-2">
-          <Filter size={18} /> Apply Filters
-        </button>
       </div>
 
       {/* Grid of properties */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <p className="text-gray-500">Loading properties...</p>
+        ) : visibleProperties.length === 0 ? (
+          <p className="text-gray-500">
+            No properties found for this location.
+          </p>
         ) : (
-          displayedProperties.map((property) => (
+          visibleProperties.map((property) => (
             <div
               key={property.id}
-              className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+              className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
               {/* Image Box */}
               <div className="h-48 overflow-hidden relative">
@@ -116,6 +127,25 @@ const Browse = () => {
                   alt={property.title}
                   className="w-full h-full object-cover"
                 />
+                <span
+                  className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    String(
+                      property.status || property.raw?.status || "available",
+                    )
+                      .toLowerCase()
+                      .includes("available")
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {String(
+                    property.status || property.raw?.status || "Available",
+                  )
+                    .toLowerCase()
+                    .includes("available")
+                    ? "Available"
+                    : "Currently Occupied"}
+                </span>
               </div>
 
               {/* Content Box */}
@@ -177,7 +207,7 @@ const Browse = () => {
                   </div>
                   <Link
                     to={`/property/${property.id}`}
-                    className="text-black text-sm font-semibold hover:underline"
+                    className="inline-flex items-center rounded-lg border border-black px-3 py-1.5 text-sm font-semibold text-black hover:bg-black hover:text-white transition-colors"
                   >
                     View Details
                   </Link>
@@ -188,15 +218,17 @@ const Browse = () => {
         )}
       </div>
 
-      <div className="flex justify-center mt-10">
-        <button
-          type="button"
-          onClick={() => setShowAllProperties(true)}
-          className="bg-black text-white px-8 py-3 rounded-lg text-md font-medium hover:bg-white hover:text-black border border-black transition mt-10"
-        >
-          Browse All Properties
-        </button>
-      </div>
+      {!shouldShowAllResults && !showAllProperties && properties.length > 3 ? (
+        <div className="flex justify-center mt-10">
+          <button
+            type="button"
+            onClick={() => setShowAllProperties(true)}
+            className="bg-black text-white px-8 py-3 rounded-lg text-md font-medium hover:bg-white hover:text-black border border-black transition mt-10"
+          >
+            Browse All Properties
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 };

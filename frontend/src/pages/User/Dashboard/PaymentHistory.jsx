@@ -5,11 +5,21 @@ import {
   Download,
   Filter,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import useAuth from "../../../hooks/useAuth";
+import {
+  fetchTenantBookings,
+  fetchTenantPayments,
+} from "../../../utils/notificationService";
 
 const PaymentHistory = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [stats, setStats] = useState({
     totalPaid: 0,
@@ -17,68 +27,129 @@ const PaymentHistory = () => {
     nextPaymentDue: 0,
   });
 
+  const paymentBanner = searchParams.get("payment");
+  const paymentTransactionId = searchParams.get("transaction_id");
+
+  const calculateBookingTotal = (booking) => {
+    const monthlyRent = Number.parseFloat(
+      String(booking?.property?.price || booking?.property_price || 0).replace(
+        /[^0-9.]/g,
+        "",
+      ),
+    );
+    const durationMonths = Number.parseInt(
+      String(booking?.duration || booking?.months || 1).replace(/[^0-9]/g, ""),
+      10,
+    );
+
+    return (monthlyRent || 0) * (durationMonths > 0 ? durationMonths : 1);
+  };
+
+  const mapBookingsToPendingPayments = (bookingRows, paidBookingIds) =>
+    bookingRows
+      .filter((booking) =>
+        ["approved", "confirmed"].includes(String(booking.status)),
+      )
+      .filter((booking) => !paidBookingIds.has(Number(booking.id)))
+      .map((booking) => ({
+        id: `booking-${booking.id}`,
+        bookingId: booking.id,
+        propertyTitle: booking.property?.title || "Property Booking",
+        ownerName:
+          booking.property?.owner_name ||
+          booking.property?.user?.name ||
+          "Owner",
+        amount: calculateBookingTotal(booking),
+        dueDate: booking.approved_at
+          ? new Date(booking.approved_at)
+          : new Date(booking.created_at),
+        paidDate: null,
+        status: "pending",
+        method: null,
+        transactionId: null,
+        isPendingPayment: true,
+      }));
+
+  const mapPaymentsToRows = (paymentRows) =>
+    paymentRows.map((payment) => ({
+      id: `payment-${payment.id}`,
+      bookingId: payment.booking_id,
+      propertyTitle:
+        payment.property_name || payment.property?.title || "Property",
+      ownerName: payment.owner_name || payment.owner?.name || "Owner",
+      amount: Number(payment.total_amount || payment.total_payment || 0),
+      dueDate: payment.booking_date
+        ? new Date(payment.booking_date)
+        : new Date(payment.payment_date || Date.now()),
+      paidDate: payment.payment_date ? new Date(payment.payment_date) : null,
+      status:
+        payment.payment_status === "completed"
+          ? "paid"
+          : payment.payment_status,
+      method: payment.payment_method || "sslcommerz",
+      transactionId: payment.transaction_id,
+      isPendingPayment: payment.payment_status !== "completed",
+    }));
+
   useEffect(() => {
     const loadPayments = async () => {
       setLoading(true);
       try {
-        // Mock data - replace with actual backend API call
-        const mockPayments = [
-          {
-            id: 1,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            ownerName: "Ahmed Hassan",
-            amount: 25000,
-            dueDate: new Date(2026, 4, 15),
-            paidDate: new Date(2026, 4, 14),
-            status: "paid",
-            method: "bkash",
-          },
-          {
-            id: 2,
-            propertyTitle: "Studio Flat in Dhanmondi",
-            ownerName: "Fatima Khan",
-            amount: 15000,
-            dueDate: new Date(2026, 5, 10),
-            paidDate: null,
-            status: "pending",
-            method: null,
-          },
-          {
-            id: 3,
-            propertyTitle: "2BHK House in Gulshan",
-            ownerName: "Rahman Ahmed",
-            amount: 35000,
-            dueDate: new Date(2026, 4, 20),
-            paidDate: new Date(2026, 4, 19),
-            status: "paid",
-            method: "nagad",
-          },
-          {
-            id: 4,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            ownerName: "Ahmed Hassan",
-            amount: 25000,
-            dueDate: new Date(2026, 3, 15),
-            paidDate: new Date(2026, 3, 16),
-            status: "paid",
-            method: "bank_transfer",
-          },
-        ];
+        const tenantId = user?.id;
+        if (!tenantId) {
+          setPayments([]);
+          setStats({ totalPaid: 0, pendingPayments: 0, nextPaymentDue: 0 });
+          return;
+        }
 
-        setPayments(mockPayments);
+        const [bookingsResponse, paymentsResponse] = await Promise.all([
+          fetchTenantBookings(),
+          fetchTenantPayments(tenantId),
+        ]);
 
-        // Calculate stats
-        const totalPaid = mockPayments
-          .filter((p) => p.status === "paid")
-          .reduce((sum, p) => sum + p.amount, 0);
-        const pending = mockPayments
-          .filter((p) => p.status === "pending")
-          .reduce((sum, p) => sum + p.amount, 0);
+        const bookingRows = bookingsResponse?.data || [];
+        const paymentRows = paymentsResponse?.data || [];
+        const paidBookingIds = new Set(
+          paymentRows.map((payment) => Number(payment.booking_id)),
+        );
+
+        const pendingPaymentRows = mapBookingsToPendingPayments(
+          bookingRows,
+          paidBookingIds,
+        );
+        const completedPaymentRows = mapPaymentsToRows(paymentRows);
+        const mergedPayments = [
+          ...completedPaymentRows,
+          ...pendingPaymentRows,
+        ].sort(
+          (left, right) => new Date(right.dueDate) - new Date(left.dueDate),
+        );
+
+        setPayments(mergedPayments);
+
+        const totalPaid = completedPaymentRows
+          .filter((payment) => payment.status === "paid")
+          .reduce((sum, payment) => sum + payment.amount, 0);
+
+        const pending = pendingPaymentRows.reduce(
+          (sum, payment) => sum + payment.amount,
+          0,
+        );
+
+        const nearestDueDate = pendingPaymentRows
+          .map((payment) => payment.dueDate)
+          .sort((left, right) => left - right)[0];
+        const daysUntilDue = nearestDueDate
+          ? Math.max(
+              0,
+              Math.ceil((nearestDueDate - new Date()) / (1000 * 60 * 60 * 24)),
+            )
+          : 0;
 
         setStats({
           totalPaid: totalPaid,
           pendingPayments: pending,
-          nextPaymentDue: pending > 0 ? 5 : 0,
+          nextPaymentDue: daysUntilDue,
         });
       } catch (err) {
         console.error("Failed to load payment history:", err);
@@ -89,6 +160,24 @@ const PaymentHistory = () => {
 
     loadPayments();
   }, []);
+
+  const bannerMessage = useMemo(() => {
+    if (paymentBanner === "success") {
+      return paymentTransactionId
+        ? `Payment completed successfully. Transaction ID: ${paymentTransactionId}`
+        : "Payment completed successfully.";
+    }
+
+    if (paymentBanner === "failed") {
+      return "The payment attempt failed. Please try again.";
+    }
+
+    if (paymentBanner === "cancelled") {
+      return "The payment was cancelled before completion.";
+    }
+
+    return "";
+  }, [paymentBanner, paymentTransactionId]);
 
   const filteredPayments = payments.filter((p) => {
     if (filterStatus === "all") return true;
@@ -114,22 +203,75 @@ const PaymentHistory = () => {
     const methods = {
       bkash: "bKash",
       nagad: "Nagad",
-      bank_transfer: "Bank Transfer",
+      visa: "Visa Card",
+      mastercard: "MasterCard",
       rocket: "Rocket",
+      mobile_banking: "Mobile Banking",
+      sslcommerz: "SSLCommerz",
     };
     return methods[method] || "Not specified";
   };
 
-  const handleMakePayment = (paymentId) => {
-    alert("Payment gateway integration coming soon!");
+  const handleMakePayment = (bookingId) => {
+    navigate(`/dashboard/payments/${bookingId}`);
   };
 
-  const handleDownloadReceipt = () => {
-    alert("Receipt download feature coming soon!");
+  const handleDownloadInvoice = async (paymentId) => {
+    setDownloadingId(paymentId);
+    try {
+      const API_URL =
+        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+      const token = localStorage.getItem("access_token");
+
+      const response = await fetch(
+        `${API_URL}/v1/invoices/${paymentId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoice_${paymentId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else if (response.status === 401) {
+        alert("Your session has expired. Please login again.");
+      } else if (response.status === 403) {
+        alert("You don't have permission to download this invoice.");
+      } else {
+        const errorText = await response.text();
+        alert("Failed to download invoice: " + errorText);
+      }
+    } catch (err) {
+      console.error("Error downloading invoice:", err);
+      alert("Error downloading invoice. Please try again.");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto">
+      {bannerMessage ? (
+        <div
+          className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${
+            paymentBanner === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-amber-200 bg-amber-50 text-amber-700"
+          }`}
+        >
+          {bannerMessage}
+        </div>
+      ) : null}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -211,13 +353,6 @@ const PaymentHistory = () => {
               </button>
             ))}
           </div>
-          <button
-            onClick={handleDownloadReceipt}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            <Download size={16} />
-            Download Invoice
-          </button>
         </div>
       </div>
 
@@ -299,18 +434,34 @@ const PaymentHistory = () => {
                     <td className="px-6 py-4 text-sm">
                       {payment.status === "pending" ? (
                         <button
-                          onClick={() => handleMakePayment(payment.id)}
+                          onClick={() => handleMakePayment(payment.bookingId)}
                           className="text-indigo-600 hover:text-indigo-800 font-medium"
                         >
                           Pay Now
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleDownloadReceipt()}
-                          className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          onClick={() =>
+                            handleDownloadInvoice(
+                              payment.id?.replace("payment-", "") || payment.id,
+                            )
+                          }
+                          disabled={
+                            downloadingId ===
+                            (payment.id?.replace("payment-", "") || payment.id)
+                          }
+                          className={`text-sm font-medium flex items-center gap-1 transition ${
+                            downloadingId ===
+                            (payment.id?.replace("payment-", "") || payment.id)
+                              ? "text-gray-400 cursor-not-allowed"
+                              : "text-blue-600 hover:text-blue-800"
+                          }`}
                         >
                           <Download size={14} />
-                          Receipt
+                          {downloadingId ===
+                          (payment.id?.replace("payment-", "") || payment.id)
+                            ? "Downloading..."
+                            : "Invoice"}
                         </button>
                       )}
                     </td>
@@ -332,7 +483,14 @@ const PaymentHistory = () => {
           are secure and encrypted.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {["bKash", "Nagad", "Rocket", "Bank Transfer"].map((method) => (
+          {[
+            "bKash",
+            "Nagad",
+            "Rocket",
+            "Visa Card",
+            "MasterCard",
+            "Mobile Banking",
+          ].map((method) => (
             <div
               key={method}
               className="bg-white rounded-lg p-3 border border-indigo-100 text-center"

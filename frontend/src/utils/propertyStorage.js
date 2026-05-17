@@ -325,6 +325,41 @@ const fetchPropertyById = async (id) => {
   return normalizePropertyRecord(response?.data || null);
 };
 
+const fetchPropertiesByLocation = async (location = "") => {
+  const normalizedLocation = String(location || "").trim();
+
+  if (!normalizedLocation) {
+    return fetchAllProperties();
+  }
+
+  if (!PROPERTY_API_URL) {
+    return getStoredProperties().filter((property) =>
+      String(property.location || "")
+        .toLowerCase()
+        .includes(normalizedLocation.toLowerCase()),
+    );
+  }
+
+  try {
+    const response = await requestJson(
+      `${PROPERTY_API_URL}/search?location=${encodeURIComponent(normalizedLocation)}`,
+      {
+        method: "GET",
+      },
+    );
+
+    return Array.isArray(response?.data)
+      ? response.data.map((property) => normalizePropertyRecord(property))
+      : [];
+  } catch {
+    return getStoredProperties().filter((property) =>
+      String(property.location || "")
+        .toLowerCase()
+        .includes(normalizedLocation.toLowerCase()),
+    );
+  }
+};
+
 const deleteProperty = async (id) => {
   const normalizedId = String(id);
 
@@ -355,6 +390,7 @@ const deleteProperty = async (id) => {
 export {
   deleteProperty,
   fetchAllProperties,
+  fetchPropertiesByLocation,
   fetchPropertyById,
   findPropertyById,
   getStoredProperties,

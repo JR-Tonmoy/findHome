@@ -36,6 +36,15 @@ const normalizePublicProperty = (property = {}) => {
   const bedrooms = toNumberOrNull(property.bedrooms ?? property.beds) ?? 0;
   const bathrooms = toNumberOrNull(property.bathrooms ?? property.baths) ?? 0;
 
+  // Extract owner info from nested owner object or flat fields
+  const ownerData = property.owner || {};
+  const ownerName = ownerData.name || property.owner_name || "Property Owner";
+  const ownerPhone = ownerData.phone || property.owner_phone || "N/A";
+  const ownerEmail = ownerData.email || property.owner_email || "N/A";
+  const ownerAvatar = ownerData.avatar || property.owner_avatar || null;
+  const ownerProfileImage =
+    ownerData.profile_image || property.owner_profile_image || null;
+
   return {
     id: String(property.id),
     title: property.title || "Untitled Property",
@@ -56,9 +65,12 @@ const normalizePublicProperty = (property = {}) => {
         : ["24/7 Security", "Reliable Utilities", "Good Neighborhood"],
     images,
     owner: {
-      name: property.owner?.name || "Property Owner",
-      phone: property.owner?.phone || "N/A",
-      email: property.owner?.email || "N/A",
+      id: ownerData.id || null,
+      name: ownerName,
+      phone: ownerPhone,
+      email: ownerEmail,
+      avatar: ownerAvatar,
+      profile_image: ownerProfileImage,
     },
   };
 };
