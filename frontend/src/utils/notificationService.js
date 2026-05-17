@@ -1,47 +1,9 @@
+import http from "./http";
 const API_BASE_URL =
   import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
-const NOTIFICATION_API_URL = API_BASE_URL
-  ? `${API_BASE_URL}/api/v1/notifications`
-  : "";
-const BOOKING_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/bookings` : "";
-const PAYMENT_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/payments` : "";
-
-const getAuthToken = () => {
-  try {
-    return localStorage.getItem("token") || "";
-  } catch {
-    return "";
-  }
-};
-
-const requestJson = async (url, options = {}) => {
-  if (!API_BASE_URL) {
-    throw new Error("API Base URL is not configured.");
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : null;
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.message || `Request failed with status ${response.status}`,
-    );
-  }
-
-  return payload;
-};
+const NOTIFICATION_API_URL = API_BASE_URL ? `/api/v1/notifications` : "";
+const BOOKING_API_URL = API_BASE_URL ? `/api/v1/bookings` : "";
+const PAYMENT_API_URL = API_BASE_URL ? `/api/v1/payments` : "";
 
 /**
  * Fetch all notifications for the authenticated user
@@ -50,8 +12,8 @@ export const fetchNotifications = async () => {
   if (!NOTIFICATION_API_URL) return { data: [], unread_count: 0 };
 
   try {
-    const response = await requestJson(NOTIFICATION_API_URL, { method: "GET" });
-    return response || { data: [], unread_count: 0 };
+    const res = await http.get(NOTIFICATION_API_URL);
+    return res?.data || { data: [], unread_count: 0 };
   } catch (err) {
     console.warn("Failed to fetch notifications:", err);
     return { data: [], unread_count: 0 };
@@ -65,10 +27,8 @@ export const fetchUnreadNotificationCount = async () => {
   if (!NOTIFICATION_API_URL) return 0;
 
   try {
-    const response = await requestJson(`${NOTIFICATION_API_URL}/unread/count`, {
-      method: "GET",
-    });
-    return response?.unread_count || 0;
+    const res = await http.get(`${NOTIFICATION_API_URL}/unread/count`);
+    return res?.data?.unread_count || res?.data || 0;
   } catch (err) {
     console.warn("Failed to fetch unread count:", err);
     return 0;
@@ -82,11 +42,10 @@ export const markNotificationAsRead = async (notificationId) => {
   if (!NOTIFICATION_API_URL) return null;
 
   try {
-    const response = await requestJson(
+    const res = await http.put(
       `${NOTIFICATION_API_URL}/${notificationId}/read`,
-      { method: "PUT" },
     );
-    return response?.data || null;
+    return res?.data || null;
   } catch (err) {
     console.warn("Failed to mark notification as read:", err);
     return null;
@@ -100,10 +59,8 @@ export const markAllNotificationsAsRead = async () => {
   if (!NOTIFICATION_API_URL) return null;
 
   try {
-    const response = await requestJson(`${NOTIFICATION_API_URL}/read-all`, {
-      method: "PUT",
-    });
-    return response || null;
+    const res = await http.put(`${NOTIFICATION_API_URL}/read-all`);
+    return res?.data || null;
   } catch (err) {
     console.warn("Failed to mark all notifications as read:", err);
     return null;
@@ -117,11 +74,8 @@ export const deleteNotification = async (notificationId) => {
   if (!NOTIFICATION_API_URL) return null;
 
   try {
-    const response = await requestJson(
-      `${NOTIFICATION_API_URL}/${notificationId}`,
-      { method: "DELETE" },
-    );
-    return response || null;
+    const res = await http.delete(`${NOTIFICATION_API_URL}/${notificationId}`);
+    return res?.data || null;
   } catch (err) {
     console.warn("Failed to delete notification:", err);
     return null;
@@ -137,14 +91,29 @@ export const createBooking = async (bookingData) => {
   }
 
   try {
-    const response = await requestJson(BOOKING_API_URL, {
-      method: "POST",
-      body: JSON.stringify(bookingData),
-    });
-    return response?.data || null;
+    const res = await http.post(BOOKING_API_URL, bookingData);
+    return res?.data || null;
   } catch (err) {
     console.error("Failed to create booking:", err);
-    throw err;
+    const apiMessage = err?.response?.data?.message;
+    const validationErrors = err?.response?.data?.errors;
+
+    if (apiMessage) {
+      throw new Error(apiMessage);
+    }
+
+    if (validationErrors && typeof validationErrors === "object") {
+      const firstFieldErrors = Object.values(validationErrors)?.[0];
+      const firstMessage = Array.isArray(firstFieldErrors)
+        ? firstFieldErrors[0]
+        : null;
+
+      if (firstMessage) {
+        throw new Error(firstMessage);
+      }
+    }
+
+    throw new Error("Failed to create booking request. Please try again.");
   }
 };
 
@@ -155,10 +124,8 @@ export const fetchOwnerBookings = async () => {
   if (!BOOKING_API_URL) return { data: [] };
 
   try {
-    const response = await requestJson(`${BOOKING_API_URL}/owner`, {
-      method: "GET",
-    });
-    return response || { data: [] };
+    const res = await http.get(`${BOOKING_API_URL}/owner`);
+    return res?.data || { data: [] };
   } catch (err) {
     console.warn("Failed to fetch owner bookings:", err);
     return { data: [] };
@@ -172,10 +139,8 @@ export const fetchTenantBookings = async () => {
   if (!BOOKING_API_URL) return { data: [] };
 
   try {
-    const response = await requestJson(`${BOOKING_API_URL}/tenant`, {
-      method: "GET",
-    });
-    return response || { data: [] };
+    const res = await http.get(`${BOOKING_API_URL}/tenant`);
+    return res?.data || { data: [] };
   } catch (err) {
     console.warn("Failed to fetch tenant bookings:", err);
     return { data: [] };
@@ -189,13 +154,8 @@ export const fetchTenantPayments = async (tenantId) => {
   if (!PAYMENT_API_URL || !tenantId) return { data: [] };
 
   try {
-    const response = await requestJson(
-      `${PAYMENT_API_URL}/tenant/${tenantId}`,
-      {
-        method: "GET",
-      },
-    );
-    return response || { data: [] };
+    const res = await http.get(`${PAYMENT_API_URL}/tenant/${tenantId}`);
+    return res?.data || { data: [] };
   } catch (err) {
     console.warn("Failed to fetch tenant payments:", err);
     return { data: [] };
@@ -211,14 +171,11 @@ export const initiateBookingPayment = async ({ bookingId, paymentMethod }) => {
   }
 
   try {
-    const response = await requestJson(`${PAYMENT_API_URL}/initiate`, {
-      method: "POST",
-      body: JSON.stringify({
-        booking_id: bookingId,
-        payment_method: paymentMethod,
-      }),
+    const res = await http.post(`${PAYMENT_API_URL}/initiate`, {
+      booking_id: bookingId,
+      payment_method: paymentMethod,
     });
-    return response?.data || null;
+    return res?.data || null;
   } catch (err) {
     console.error("Failed to initiate booking payment:", err);
     throw err;
@@ -232,13 +189,8 @@ export const approveBooking = async (bookingId) => {
   if (!BOOKING_API_URL) return null;
 
   try {
-    const response = await requestJson(
-      `${BOOKING_API_URL}/${bookingId}/approve`,
-      {
-        method: "PUT",
-      },
-    );
-    return response?.data || null;
+    const res = await http.put(`${BOOKING_API_URL}/${bookingId}/approve`);
+    return res?.data || null;
   } catch (err) {
     console.error("Failed to approve booking:", err);
     throw err;
@@ -252,13 +204,8 @@ export const rejectBooking = async (bookingId) => {
   if (!BOOKING_API_URL) return null;
 
   try {
-    const response = await requestJson(
-      `${BOOKING_API_URL}/${bookingId}/reject`,
-      {
-        method: "PUT",
-      },
-    );
-    return response?.data || null;
+    const res = await http.put(`${BOOKING_API_URL}/${bookingId}/reject`);
+    return res?.data || null;
   } catch (err) {
     console.error("Failed to reject booking:", err);
     throw err;
@@ -272,10 +219,8 @@ export const fetchBooking = async (bookingId) => {
   if (!BOOKING_API_URL) return null;
 
   try {
-    const response = await requestJson(`${BOOKING_API_URL}/${bookingId}`, {
-      method: "GET",
-    });
-    return response?.data || null;
+    const res = await http.get(`${BOOKING_API_URL}/${bookingId}`);
+    return res?.data || null;
   } catch (err) {
     console.warn("Failed to fetch booking:", err);
     return null;

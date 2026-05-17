@@ -6,40 +6,83 @@ import {
   Trash2,
   Users as UsersIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import adminService from "../../../utils/adminService";
 import { normalizeMemberRecord } from "../../../utils/memberStorage";
 
 const Users = () => {
-  const [registeredUsers, setRegisteredUsers] = useState(
-    JSON.parse(localStorage.getItem("registeredUsers") || "[]").map(
-      normalizeMemberRecord,
-    ),
-  );
+  const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleRemoveUser = (index) => {
+  useEffect(() => {
+    let active = true;
+
+    const loadUsers = async () => {
+      setLoading(true);
+      try {
+        const users = await adminService.fetchAdminUsers();
+        if (!active) return;
+        setRegisteredUsers(
+          Array.isArray(users) ? users.map(normalizeMemberRecord) : [],
+        );
+      } catch (err) {
+        console.error("Failed to load users:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadUsers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleRemoveUser = async (index) => {
+    const user = registeredUsers[index];
     const updatedUsers = registeredUsers.filter((_, i) => i !== index);
     setRegisteredUsers(updatedUsers);
-    localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
+
+    // Try to delete on the backend, if available. If it fails, keep local change.
+    try {
+      if (user?.id) {
+        await adminService.deleteAdminUser(user.id);
+      } else {
+        localStorage.setItem("registeredUsers", JSON.stringify(updatedUsers));
+      }
+    } catch (err) {
+      console.warn("Failed to delete user on backend:", err);
+    }
   };
 
   const stats = [
     {
       title: "Active Users",
-      count: "450",
+      count: String(registeredUsers.length || 0),
       icon: <UsersIcon size={20} className="text-purple-600" />,
       bg: "bg-white",
       gradient: "bg-linear-to-r from-blue-50 via-purple-50 to-pink-50",
     },
     {
       title: "Email Verified",
-      count: "260",
+      count: String(
+        registeredUsers.filter(
+          (u) => u.email_verified_at || u.is_verified || u.emailVerified,
+        ).length || 0,
+      ),
       icon: <Mail size={20} className="text-emerald-500" />,
       bg: "bg-white",
       gradient: "bg-linear-to-r from-emerald-50 to-teal-50",
     },
     {
       title: "Email Unverified",
-      count: "124",
+      count: String(
+        registeredUsers.length -
+          registeredUsers.filter(
+            (u) => u.email_verified_at || u.is_verified || u.emailVerified,
+          ).length || 0,
+      ),
       icon: <Mail className="text-pink-500" size={20} />,
       bg: "bg-white",
       gradient: "bg-linear-to-r from-pink-50 to-rose-50",

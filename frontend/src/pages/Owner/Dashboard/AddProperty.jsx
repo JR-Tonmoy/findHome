@@ -285,17 +285,26 @@ const AddProperty = () => {
         raw: Object.fromEntries(formData.entries()),
       });
 
+      // Show success message only after database save confirmation
       setStatusMessage(
-        `${property.title} ${isEditing ? "updated" : "saved"} successfully.`,
+        `✓ ${property.title} ${isEditing ? "updated" : "saved"} successfully to database.`,
       );
+
+      // Wait a moment for user to see success, then redirect to dashboard
       setTimeout(() => {
         setIsSubmitting(false);
         navigate("/owner-dashboard");
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error("Property save error:", error);
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.response?.data?.errors ||
+        error?.message ||
+        String(error);
+
       setStatusMessage(
-        `Error saving property: ${error?.message || String(error)}`,
+        `✗ Error: ${errorMsg}. Please check your data and try again.`,
       );
       setIsSubmitting(false);
     }

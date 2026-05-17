@@ -1,5 +1,6 @@
 import { BarChart3, DollarSign, Download, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import adminService from "../../../utils/adminService";
 
 const PaymentReports = () => {
   const [paymentData, setPaymentData] = useState([]);
@@ -10,80 +11,76 @@ const PaymentReports = () => {
     totalTransactions: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     const loadPaymentData = async () => {
       setLoading(true);
       try {
-        // Mock data - replace with actual backend API call
-        const mockPayments = [
-          {
-            id: 1,
-            property: "Luxury Apartment in Mirpur",
-            owner: "Ahmed Hassan",
-            amount: 25000,
-            method: "Bank Transfer",
-            date: new Date(2026, 4, 15),
-            status: "paid",
-          },
-          {
-            id: 2,
-            property: "Studio Flat in Dhanmondi",
-            owner: "Fatima Khan",
-            amount: 15000,
-            method: "Bkash",
-            date: new Date(2026, 4, 10),
-            status: "paid",
-          },
-          {
-            id: 3,
-            property: "2BHK House in Gulshan",
-            owner: "Mohammad Ali",
-            amount: 35000,
-            method: "Nagad",
-            date: new Date(2026, 4, 5),
-            status: "pending",
-          },
-          {
-            id: 4,
-            property: "Penthouse in Banani",
-            owner: "Shahriar Kabir",
-            amount: 50000,
-            method: "Bank Transfer",
-            date: new Date(2026, 4, 1),
-            status: "paid",
-          },
-        ];
+        const payments = await adminService.fetchPaymentsAdmin();
+        if (!active) return;
 
-        setPaymentData(mockPayments);
+        // payments may be an array of objects coming from backend
+        const normalized = (Array.isArray(payments) ? payments : []).map(
+          (p) => ({
+            id: p.id,
+            property:
+              p.property?.title ||
+              p.property_name ||
+              p.property ||
+              p.propertyTitle ||
+              "-",
+            owner: p.owner?.name || p.owner_name || p.owner || "-",
+            amount: Number(p.total_payment || p.amount || p.price || 0),
+            method: p.payment_method || p.method || p.gateway || "-",
+            date: p.booking_date
+              ? new Date(p.booking_date)
+              : p.date
+                ? new Date(p.date)
+                : new Date(),
+            status:
+              p.payment_status || p.status || (p.paid ? "paid" : "pending"),
+          }),
+        );
 
-        const total = mockPayments.reduce((sum, p) => sum + p.amount, 0);
-        const thisMonth = mockPayments
+        setPaymentData(normalized);
+
+        const total = normalized.reduce(
+          (sum, p) => sum + (Number(p.amount) || 0),
+          0,
+        );
+        const thisMonth = normalized
           .filter(
             (p) =>
               p.date.getMonth() === new Date().getMonth() &&
               p.date.getFullYear() === new Date().getFullYear() &&
               p.status === "paid",
           )
-          .reduce((sum, p) => sum + p.amount, 0);
-        const pending = mockPayments
+          .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        const pending = normalized
           .filter((p) => p.status === "pending")
-          .reduce((sum, p) => sum + p.amount, 0);
+          .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
         setStats({
           totalRevenue: total,
-          thisMonthRevenue: thisMonth || 50000, // Mock this month
+          thisMonthRevenue: thisMonth || 0,
           pendingAmount: pending,
-          totalTransactions: mockPayments.length,
+          totalTransactions: normalized.length,
         });
       } catch (err) {
         console.error("Failed to load payment data:", err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     loadPaymentData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const getMethodColor = (method) => {
@@ -96,6 +93,32 @@ const PaymentReports = () => {
         return "text-red-600 bg-red-100";
       default:
         return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const downloadPDFReport = async () => {
+    setDownloadingReport(true);
+
+    try {
+      const response = await adminService.downloadAdminReportPdf();
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      const now = new Date();
+      const fileDate = now.toISOString().slice(0, 10);
+      link.href = url;
+      link.setAttribute("download", `bashaLagbe-admin-report-${fileDate}.pdf`);
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      const backendMessage = err?.response?.data?.message;
+      alert(backendMessage || "Failed to download PDF report.");
+    } finally {
+      setDownloadingReport(false);
     }
   };
 
@@ -172,9 +195,13 @@ const PaymentReports = () => {
 
       {/* Export Button */}
       <div className="mb-6">
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+        <button
+          onClick={downloadPDFReport}
+          disabled={downloadingReport}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
           <Download size={18} />
-          Download Report (CSV)
+          {downloadingReport ? "Downloading..." : "Download Report (PDF)"}
         </button>
       </div>
 

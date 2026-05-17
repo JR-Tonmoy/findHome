@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   CheckCircle,
   Clock,
   Home,
@@ -8,6 +9,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import adminService from "../../../utils/adminService";
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
@@ -19,74 +21,55 @@ const BookingManagement = () => {
     approved: 0,
     rejected: 0,
   });
+  const [approving, setApproving] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [messageType, setMessageType] = useState(null);
 
   useEffect(() => {
+    let active = true;
+
     const loadBookings = async () => {
       setLoading(true);
       try {
-        // Mock data - replace with actual backend API call
-        const mockBookings = [
-          {
-            id: 1,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            propertyLocation: "Mirpur, Dhaka",
-            tenantName: "John Doe",
-            tenantEmail: "john@example.com",
-            tenantPhone: "+8801700000000",
-            moveInDate: "2026-06-01",
-            duration: "12",
-            status: "approved",
-            requestedDate: new Date(2026, 4, 1),
-            approvalDate: new Date(2026, 4, 2),
-          },
-          {
-            id: 2,
-            propertyTitle: "Studio Flat in Dhanmondi",
-            propertyLocation: "Dhanmondi, Dhaka",
-            tenantName: "Jane Smith",
-            tenantEmail: "jane@example.com",
-            tenantPhone: "+8801800000000",
-            moveInDate: "2026-05-20",
-            duration: "6",
-            status: "pending",
-            requestedDate: new Date(2026, 4, 10),
-            approvalDate: null,
-          },
-          {
-            id: 3,
-            propertyTitle: "2BHK House in Gulshan",
-            propertyLocation: "Gulshan, Dhaka",
-            tenantName: "Mike Johnson",
-            tenantEmail: "mike@example.com",
-            tenantPhone: "+8801900000000",
-            moveInDate: "2026-07-01",
-            duration: "24",
-            status: "rejected",
-            requestedDate: new Date(2026, 3, 25),
-            approvalDate: new Date(2026, 3, 28),
-          },
-          {
-            id: 4,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            propertyLocation: "Mirpur, Dhaka",
-            tenantName: "Sarah Connor",
-            tenantEmail: "sarah@example.com",
-            tenantPhone: "+8801600000000",
-            moveInDate: "2026-06-15",
-            duration: "12",
-            status: "pending",
-            requestedDate: new Date(2026, 4, 8),
-            approvalDate: null,
-          },
-        ];
+        const data = await adminService.fetchAdminBookings();
+        if (!active) return;
 
-        setBookings(mockBookings);
+        // Normalize minimal fields expected by the UI
+        const normalized = (Array.isArray(data) ? data : []).map((b) => ({
+          id: b.id,
+          propertyTitle:
+            b.property?.title ||
+            b.property_title ||
+            b.propertyName ||
+            b.propertyTitle ||
+            "-",
+          propertyLocation:
+            b.property?.location ||
+            b.property_location ||
+            b.propertyLocation ||
+            "-",
+          tenantName:
+            b.tenant?.name || b.tenant_name || b.tenantName || b.tenant || "-",
+          tenantEmail:
+            b.tenant?.email || b.tenant_email || b.tenantEmail || "-",
+          tenantPhone:
+            b.tenant?.phone || b.tenant_phone || b.tenantPhone || "-",
+          moveInDate:
+            b.move_in_date || b.moveInDate || b.moveIn || b.start_date || "-",
+          duration: b.duration || b.months || b.period || "-",
+          status: b.status || b.booking_status || "pending",
+          requestedDate:
+            b.requested_at || b.created_at || b.requestedDate || null,
+          approvalDate: b.approved_at || b.approvalDate || null,
+        }));
 
-        // Calculate stats
-        const total = mockBookings.length;
-        const pend = mockBookings.filter((b) => b.status === "pending").length;
-        const appr = mockBookings.filter((b) => b.status === "approved").length;
-        const rej = mockBookings.filter((b) => b.status === "rejected").length;
+        setBookings(normalized);
+
+        const total = normalized.length;
+        const pend = normalized.filter((b) => b.status === "pending").length;
+        const appr = normalized.filter((b) => b.status === "approved").length;
+        const rej = normalized.filter((b) => b.status === "rejected").length;
 
         setStats({
           totalBookings: total,
@@ -102,7 +85,100 @@ const BookingManagement = () => {
     };
 
     loadBookings();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const handleApprove = async (booking) => {
+    setApproving(booking.id);
+    setMessage(null);
+
+    try {
+      await adminService.approveBookingAdmin(booking.id);
+
+      // Update local state
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id ? { ...b, status: "approved" } : b,
+        ),
+      );
+
+      // Update stats
+      setStats((prev) => ({
+        totalBookings: prev.totalBookings,
+        pending: prev.pending - 1,
+        approved: prev.approved + 1,
+        rejected: prev.rejected,
+      }));
+
+      setMessage(
+        `✓ Booking approved! Tenant notification sent: "Congratulations! Your booking request has been approved successfully. Please complete your payment."`,
+      );
+      setMessageType("success");
+
+      setTimeout(() => setMessage(null), 5000);
+    } catch (err) {
+      console.error("Failed to approve booking:", err);
+      setMessage(
+        `✗ Failed to approve booking: ${err?.message || "Unknown error"}`,
+      );
+      setMessageType("error");
+
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleReject = async (booking) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to reject the booking from ${booking.tenantName}?`,
+      )
+    ) {
+      return;
+    }
+
+    setRejecting(booking.id);
+    setMessage(null);
+
+    try {
+      await adminService.rejectBookingAdmin(booking.id);
+
+      // Update local state
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === booking.id ? { ...b, status: "rejected" } : b,
+        ),
+      );
+
+      // Update stats
+      setStats((prev) => ({
+        totalBookings: prev.totalBookings,
+        pending: prev.pending - 1,
+        approved: prev.approved,
+        rejected: prev.rejected + 1,
+      }));
+
+      setMessage(
+        `✓ Booking rejected! Tenant notification sent: "Your booking request was rejected. Please review your information and try again."`,
+      );
+      setMessageType("success");
+
+      setTimeout(() => setMessage(null), 5000);
+    } catch (err) {
+      console.error("Failed to reject booking:", err);
+      setMessage(
+        `✗ Failed to reject booking: ${err?.message || "Unknown error"}`,
+      );
+      setMessageType("error");
+
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setRejecting(null);
+    }
+  };
 
   const filteredBookings = bookings.filter((b) => {
     if (filterStatus === "all") return true;
@@ -146,6 +222,33 @@ const BookingManagement = () => {
           Monitor and manage all property booking requests
         </p>
       </div>
+
+      {/* Message Alert */}
+      {message && (
+        <div
+          className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
+            messageType === "success"
+              ? "bg-green-50 border-green-200"
+              : "bg-red-50 border-red-200"
+          }`}
+        >
+          <AlertCircle
+            size={20}
+            className={
+              messageType === "success" ? "text-green-600" : "text-red-600"
+            }
+          />
+          <p
+            className={
+              messageType === "success"
+                ? "text-green-800 text-sm"
+                : "text-red-800 text-sm"
+            }
+          >
+            {message}
+          </p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -320,11 +423,27 @@ const BookingManagement = () => {
                     <td className="px-6 py-4 text-sm">
                       {booking.status === "pending" ? (
                         <div className="flex gap-2">
-                          <button className="text-green-600 hover:text-green-800 font-medium">
-                            Approve
+                          <button
+                            onClick={() => handleApprove(booking)}
+                            disabled={approving === booking.id}
+                            className={`px-3 py-1 rounded text-white font-medium transition-all ${
+                              approving === booking.id
+                                ? "bg-green-400 cursor-wait"
+                                : "bg-green-600 hover:bg-green-700"
+                            }`}
+                          >
+                            {approving === booking.id ? "..." : "Approve"}
                           </button>
-                          <button className="text-red-600 hover:text-red-800 font-medium">
-                            Reject
+                          <button
+                            onClick={() => handleReject(booking)}
+                            disabled={rejecting === booking.id}
+                            className={`px-3 py-1 rounded text-white font-medium transition-all ${
+                              rejecting === booking.id
+                                ? "bg-red-400 cursor-wait"
+                                : "bg-red-600 hover:bg-red-700"
+                            }`}
+                          >
+                            {rejecting === booking.id ? "..." : "Reject"}
                           </button>
                         </div>
                       ) : (

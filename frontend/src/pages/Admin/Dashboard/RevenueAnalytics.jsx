@@ -1,5 +1,6 @@
 import { CreditCard, DollarSign, Package, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import adminService from "../../../utils/adminService";
 
 const RevenueAnalytics = () => {
   const [loading, setLoading] = useState(true);
@@ -15,62 +16,65 @@ const RevenueAnalytics = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // API base URL
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-
   // Load data on component mount
   useEffect(() => {
-    const fetchRevenueStats = async () => {
+    let active = true;
+
+    const load = async () => {
+      setLoading(true);
       try {
-        const token = localStorage.getItem("access_token");
-        const response = await fetch(`${API_URL}/v1/payments/stats`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+        const revStats = await adminService.fetchRevenueStats();
+        const paymentsRes = await adminService.fetchPaymentsAdmin();
+
+        if (!active) return;
+
+        setStats({
+          total_booked_houses:
+            revStats.total_booked_houses || revStats.total_bookings || 0,
+          total_completed_payments:
+            revStats.total_completed_payments || revStats.total_payments || 0,
+          total_revenue: revStats.total_revenue || revStats.total_revenue || 0,
+          admin_commission:
+            revStats.admin_commission || revStats.admin_commission || 0,
+          owner_earnings:
+            revStats.owner_earnings || revStats.owner_earnings || 0,
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            setStats(result.data);
-          }
-        }
+        const normalized = (Array.isArray(paymentsRes) ? paymentsRes : []).map(
+          (p) => ({
+            id: p.id,
+            property_name:
+              p.property?.title || p.property_name || p.property || "-",
+            tenant_name: p.tenant?.name || p.tenant_name || p.tenant || "-",
+            owner_name: p.owner?.name || p.owner_name || p.owner || "-",
+            total_payment: Number(p.total_payment || p.amount || p.price || 0),
+            admin_commission: Number(p.admin_commission || p.commission || 0),
+            owner_earning: Number(p.owner_earning || p.owner_share || 0),
+            payment_status: p.payment_status || p.status || "pending",
+            booking_date:
+              p.booking_date ||
+              p.created_at ||
+              p.date ||
+              new Date().toISOString(),
+          }),
+        );
+
+        setPayments(normalized);
+        setFilteredPayments(normalized);
       } catch (err) {
-        console.error("Error fetching revenue stats:", err);
+        console.error("Error fetching revenue data:", err);
         setErrorMessage("Failed to load revenue statistics");
-      }
-    };
-
-    const fetchPayments = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("access_token");
-        const response = await fetch(`${API_URL}/v1/payments?per_page=100`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            setPayments(result.data || []);
-            setFilteredPayments(result.data || []);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching payments:", err);
-        setErrorMessage("Failed to load payment records");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    fetchRevenueStats();
-    fetchPayments();
-  }, [API_URL]);
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Filter payments by status
   useEffect(() => {

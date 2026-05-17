@@ -1,12 +1,12 @@
 import { addAdminNotification } from "./adminNotificationStorage";
+import http from "./http";
 
 const PROPERTY_STORAGE_KEY = "ownerProperties";
 
 const API_BASE_URL =
   import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
-const PROPERTY_API_URL = API_BASE_URL
-  ? `${API_BASE_URL}/api/v1/properties`
-  : "";
+const PROPERTY_API_URL = API_BASE_URL ? `/api/v1/properties` : "";
+const OWNER_API_URL = API_BASE_URL ? `/api/v1/owner` : "";
 
 const readJSON = (key, fallback) => {
   try {
@@ -31,41 +31,37 @@ const dispatchPropertiesUpdated = () => {
   }
 };
 
-const getAuthToken = () => {
-  try {
-    return localStorage.getItem("token") || "";
-  } catch {
-    return "";
-  }
-};
-
 const requestJson = async (url, options = {}) => {
   if (!PROPERTY_API_URL) {
     throw new Error("Property API URL is not configured.");
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : null;
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.message || `Request failed with status ${response.status}`,
-    );
+  const method = (options.method || "get").toLowerCase();
+  if (method === "get") {
+    const res = await http.get(url, { params: options.params });
+    return res?.data;
   }
 
-  return payload;
+  if (method === "delete") {
+    const res = await http.delete(url);
+    return res?.data;
+  }
+
+  // post/put
+  const body = options.body ? JSON.parse(options.body) : options.data || {};
+  if (method === "post") {
+    const res = await http.post(url, body);
+    return res?.data;
+  }
+
+  if (method === "put") {
+    const res = await http.put(url, body);
+    return res?.data;
+  }
+
+  // fallback
+  const res = await http.request({ url, method, data: body });
+  return res?.data;
 };
 
 const makePropertyId = () => {
@@ -103,9 +99,16 @@ const normalizePropertyRecord = (property = {}) => {
 
   const bedsVal = toNumberOrNull(property.beds ?? property.bedrooms);
   const bathsVal = toNumberOrNull(property.baths ?? property.bathrooms);
+  const rawStatus = String(property.status || "").toLowerCase();
+  const normalizedStatus =
+    rawStatus === "currently_occupied" || rawStatus === "occupied"
+      ? "rented"
+      : rawStatus || "active";
 
   return {
     id: property.id ? String(property.id) : makePropertyId(),
+    owner_id: toNumberOrNull(property.owner_id),
+    user_id: toNumberOrNull(property.user_id),
     title: property.title || property.shortAddress || "Untitled Property",
     category: property.category || "Family",
     type:
@@ -116,6 +119,7 @@ const normalizePropertyRecord = (property = {}) => {
         .filter(Boolean)
         .join(", "),
     price: property.price || "0",
+    status: normalizedStatus,
     // Keep both `beds`/`baths` and `bedrooms`/`bathrooms` for compatibility
     beds: bedsVal,
     baths: bathsVal,
@@ -163,7 +167,9 @@ const writeStoredProperties = (properties, options = {}) => {
 
 const persistPropertyToBackend = async (property, method) => {
   if (!PROPERTY_API_URL) {
-    return property;
+    throw new Error(
+      "Backend not configured. Cannot save property to database.",
+    );
   }
 
   try {
@@ -177,11 +183,71 @@ const persistPropertyToBackend = async (property, method) => {
       body: JSON.stringify(property),
     });
 
-    return normalizePropertyRecord(response?.data || property);
+    if (!response || !response.data) {
+      throw new Error(
+        "Invalid response from backend: missing data in response.",
+      );
+    }
+
+    const savedProperty = normalizePropertyRecord(response.data);
+    if (!savedProperty.id) {
+      throw new Error(
+        "Backend did not return a property ID. Property may not have been created.",
+      );
+    }
+
+    return savedProperty;
+  } catch (err) {
+    const message = err?.response?.data?.message || err?.message || String(err);
+    throw new Error(`Failed to save property to database: ${message}`);
+  }
+};
+
+const fetchOwnerProperties = async () => {
+  if (!OWNER_API_URL) {
+    return getStoredProperties();
+  }
+
+  try {
+    const response = await requestJson(`${OWNER_API_URL}/properties`, {
+      method: "GET",
+    });
+    const payload = response?.data || response || [];
+    const ownerProperties = Array.isArray(payload)
+      ? payload.map((property) => normalizePropertyRecord(property))
+      : [];
+
+    writeStoredProperties(ownerProperties, { notify: false });
+    return ownerProperties;
   } catch {
-    // Backend API is not available (404, 500, etc.) - silently use local property
-    // This is expected and allowed - the app works fine with localStorage
-    return property;
+    return getStoredProperties();
+  }
+};
+
+const fetchOwnerDashboardStats = async () => {
+  if (!OWNER_API_URL) {
+    const local = getStoredProperties();
+    return {
+      total_properties: local.length,
+      available_properties: local.filter((p) => p.status === "active").length,
+      occupied_properties: local.filter((p) => p.status === "rented").length,
+      pending_booking_requests: 0,
+    };
+  }
+
+  try {
+    const response = await requestJson(`${OWNER_API_URL}/dashboard-stats`, {
+      method: "GET",
+    });
+    return response?.data || response || {};
+  } catch {
+    const local = getStoredProperties();
+    return {
+      total_properties: local.length,
+      available_properties: local.filter((p) => p.status === "active").length,
+      occupied_properties: local.filter((p) => p.status === "rented").length,
+      pending_booking_requests: 0,
+    };
   }
 };
 
@@ -189,28 +255,29 @@ const saveProperty = async (property) => {
   const currentProperties = getStoredProperties();
   const nextProperty = normalizePropertyRecord(property);
   const method = property.id ? "PUT" : "POST";
-  let savedProperty = nextProperty;
   const isUpdate = currentProperties.some(
     (storedProperty) => storedProperty.id === nextProperty.id,
   );
 
+  let savedProperty;
+
+  // Require actual backend database save before confirming success
   try {
     savedProperty = await persistPropertyToBackend(nextProperty, method);
   } catch (error) {
+    // If update failed, try as new property (POST)
     if (method === "PUT") {
       try {
         savedProperty = await persistPropertyToBackend(nextProperty, "POST");
-      } catch {
-        console.warn(
-          "Property API save failed; keeping the local copy.",
-          error,
-        );
+      } catch (fallbackError) {
+        throw fallbackError;
       }
     } else {
-      console.warn("Property API save failed; keeping the local copy.", error);
+      throw error;
     }
   }
 
+  // Property was successfully saved to database - now update local cache
   const existingIndex = currentProperties.findIndex(
     (storedProperty) => storedProperty.id === savedProperty.id,
   );
@@ -236,15 +303,11 @@ const saveProperty = async (property) => {
     createdAt: savedProperty.createdAt || new Date().toISOString(),
   });
 
-  // Refresh properties from backend and dispatch event to update home page
-  // This ensures owner/admin-added properties appear immediately on home page
-  // for all users (owner, admin, tenant).
-  if (PROPERTY_API_URL) {
-    try {
-      await fetchAllProperties();
-    } catch {
-      console.warn("Failed to refresh properties from backend after save.");
-    }
+  // Refresh properties from backend to ensure UI shows database version
+  try {
+    await fetchAllProperties();
+  } catch {
+    // Refresh failed but property was created - continue
   }
 
   // Dispatch both owner-properties-updated and a new event for public properties
@@ -279,8 +342,10 @@ const fetchAllProperties = async () => {
   fetchAllPropertiesInFlight = (async () => {
     try {
       const response = await requestJson(PROPERTY_API_URL, { method: "GET" });
-      const properties = Array.isArray(response?.data)
-        ? response.data.map((property) => normalizePropertyRecord(property))
+      const properties = Array.isArray(response?.data || response)
+        ? (response.data || response).map((property) =>
+            normalizePropertyRecord(property),
+          )
         : null;
 
       // Only overwrite local cache when backend returned a non-empty list.
@@ -317,12 +382,10 @@ const fetchPropertyById = async (id) => {
 
   const response = await requestJson(
     `${PROPERTY_API_URL}/${encodeURIComponent(id)}`,
-    {
-      method: "GET",
-    },
+    { method: "GET" },
   );
 
-  return normalizePropertyRecord(response?.data || null);
+  return normalizePropertyRecord(response?.data || response || null);
 };
 
 const fetchPropertiesByLocation = async (location = "") => {
@@ -341,15 +404,14 @@ const fetchPropertiesByLocation = async (location = "") => {
   }
 
   try {
-    const response = await requestJson(
-      `${PROPERTY_API_URL}/search?location=${encodeURIComponent(normalizedLocation)}`,
-      {
-        method: "GET",
-      },
-    );
+    const response = await requestJson(`${PROPERTY_API_URL}/search`, {
+      method: "GET",
+      params: { location: normalizedLocation },
+    });
 
-    return Array.isArray(response?.data)
-      ? response.data.map((property) => normalizePropertyRecord(property))
+    const payload = response?.data || response || [];
+    return Array.isArray(payload)
+      ? payload.map((property) => normalizePropertyRecord(property))
       : [];
   } catch {
     return getStoredProperties().filter((property) =>
@@ -390,6 +452,8 @@ const deleteProperty = async (id) => {
 export {
   deleteProperty,
   fetchAllProperties,
+  fetchOwnerDashboardStats,
+  fetchOwnerProperties,
   fetchPropertiesByLocation,
   fetchPropertyById,
   findPropertyById,

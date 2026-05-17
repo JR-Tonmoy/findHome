@@ -1,18 +1,51 @@
 import { Building, Search, Trash2, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import adminService from "../../../utils/adminService";
 import { normalizeMemberRecord } from "../../../utils/memberStorage";
 
 const Owner = () => {
-  const [registeredOwners, setRegisteredOwners] = useState(
-    JSON.parse(localStorage.getItem("registeredOwners") || "[]").map(
-      normalizeMemberRecord,
-    ),
-  );
+  const [registeredOwners, setRegisteredOwners] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleRemoveOwner = (index) => {
+  useEffect(() => {
+    let active = true;
+
+    const loadOwners = async () => {
+      setLoading(true);
+      try {
+        const owners = await adminService.fetchAdminOwners();
+        if (!active) return;
+        setRegisteredOwners(
+          Array.isArray(owners) ? owners.map(normalizeMemberRecord) : [],
+        );
+      } catch (err) {
+        console.error("Failed to load owners:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadOwners();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleRemoveOwner = async (index) => {
+    const owner = registeredOwners[index];
     const updatedOwners = registeredOwners.filter((_, i) => i !== index);
     setRegisteredOwners(updatedOwners);
-    localStorage.setItem("registeredOwners", JSON.stringify(updatedOwners));
+
+    try {
+      if (owner?.id) {
+        await adminService.deleteAdminOwner(owner.id);
+      } else {
+        localStorage.setItem("registeredOwners", JSON.stringify(updatedOwners));
+      }
+    } catch (err) {
+      console.warn("Failed to delete owner on backend:", err);
+    }
   };
 
   return (

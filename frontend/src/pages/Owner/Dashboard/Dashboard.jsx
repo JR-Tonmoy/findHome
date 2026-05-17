@@ -1,49 +1,57 @@
 import { Home, PlusCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth";
-import { getStoredProperties } from "../../../utils/propertyStorage";
+import {
+  fetchOwnerDashboardStats,
+  fetchOwnerProperties,
+} from "../../../utils/propertyStorage";
 
 const OwnerDashboard = () => {
   const { user } = useAuth();
-  const currentOwnerEmail = user?.email || "";
   const displayName = user?.fullName || user?.name || "Property Owner";
-  const [storedProperties, setStoredProperties] = useState(() =>
-    getStoredProperties(),
-  );
+  const [myProperties, setMyProperties] = useState([]);
+  const [stats, setStats] = useState({
+    total_properties: 0,
+    available_properties: 0,
+    occupied_properties: 0,
+    pending_booking_requests: 0,
+  });
 
   useEffect(() => {
-    const refreshStoredProperties = () => {
-      setStoredProperties(getStoredProperties());
+    let active = true;
+
+    const loadDashboard = async () => {
+      try {
+        const [ownerProperties, ownerStats] = await Promise.all([
+          fetchOwnerProperties(),
+          fetchOwnerDashboardStats(),
+        ]);
+
+        if (!active) return;
+
+        setMyProperties(Array.isArray(ownerProperties) ? ownerProperties : []);
+        setStats({
+          total_properties: Number(ownerStats?.total_properties || 0),
+          available_properties: Number(ownerStats?.available_properties || 0),
+          occupied_properties: Number(ownerStats?.occupied_properties || 0),
+          pending_booking_requests: Number(
+            ownerStats?.pending_booking_requests || 0,
+          ),
+        });
+      } catch (error) {
+        console.error("Failed to load owner dashboard:", error);
+      }
     };
 
-    refreshStoredProperties();
-    window.addEventListener("storage", refreshStoredProperties);
-    window.addEventListener(
-      "owner-properties-updated",
-      refreshStoredProperties,
-    );
+    loadDashboard();
+    window.addEventListener("owner-properties-updated", loadDashboard);
 
     return () => {
-      window.removeEventListener("storage", refreshStoredProperties);
-      window.removeEventListener(
-        "owner-properties-updated",
-        refreshStoredProperties,
-      );
+      active = false;
+      window.removeEventListener("owner-properties-updated", loadDashboard);
     };
   }, []);
-
-  const myProperties = useMemo(() => {
-    if (!currentOwnerEmail || currentOwnerEmail === "N/A") {
-      return storedProperties;
-    }
-
-    return storedProperties.filter(
-      (property) =>
-        property.owner?.email === currentOwnerEmail ||
-        property.owner?.email === "N/A",
-    );
-  }, [currentOwnerEmail, storedProperties]);
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6">
@@ -56,12 +64,47 @@ const OwnerDashboard = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 md:gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mt-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
           <div>
             <p className="text-gray-500 text-sm mb-1">Total Properties</p>
             <h2 className="text-3xl font-bold text-gray-800">
-              {myProperties.length}
+              {stats.total_properties}
+            </h2>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-xl text-black">
+            <Home size={24} />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">Available Properties</p>
+            <h2 className="text-3xl font-bold text-gray-800">
+              {stats.available_properties}
+            </h2>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-xl text-black">
+            <Home size={24} />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">Occupied Properties</p>
+            <h2 className="text-3xl font-bold text-gray-800">
+              {stats.occupied_properties}
+            </h2>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-xl text-black">
+            <Home size={24} />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">
+              Pending Booking Requests
+            </p>
+            <h2 className="text-3xl font-bold text-gray-800">
+              {stats.pending_booking_requests}
             </h2>
           </div>
           <div className="bg-gray-50 p-3 rounded-xl text-black">

@@ -4,32 +4,26 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth";
 import {
   deleteProperty,
-  getStoredProperties,
+  fetchOwnerProperties,
 } from "../../../utils/propertyStorage";
 
 const MyProperties = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const currentOwnerEmail = user?.email || "";
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredProperties, setFilteredProperties] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("all");
 
   useEffect(() => {
+    let active = true;
+
     const loadProperties = async () => {
       setLoading(true);
       try {
-        // Get properties from storage (backend integration ready)
-        const allProperties = getStoredProperties();
+        const ownerProperties = await fetchOwnerProperties();
 
-        // Filter properties owned by current user
-        const ownerProperties = allProperties.filter(
-          (property) =>
-            property.owner?.email === currentOwnerEmail ||
-            property.owner?.email === "N/A" ||
-            property.user_id === user?.id,
-        );
+        if (!active) return;
 
         setProperties(ownerProperties);
         setFilteredProperties(ownerProperties);
@@ -46,9 +40,10 @@ const MyProperties = () => {
     const handleUpdate = () => loadProperties();
     window.addEventListener("owner-properties-updated", handleUpdate);
     return () => {
+      active = false;
       window.removeEventListener("owner-properties-updated", handleUpdate);
     };
-  }, [currentOwnerEmail, user?.id]);
+  }, [user?.id]);
 
   // Filter by status
   useEffect(() => {

@@ -136,6 +136,7 @@ const OrderNow = () => {
                         currentMember.fullName ||
                         "Tenant",
                     ).trim();
+                    const tenantId = Number(user?.id || currentMember?.id || 0);
                     const tenantPhone = String(
                       formData.get("phone") ||
                         user?.phone ||
@@ -158,9 +159,19 @@ const OrderNow = () => {
                       formData.get("message") || "",
                     ).trim();
 
+                    const finalMessage =
+                      message ||
+                      "I am interested in this property. Please contact me for next steps.";
+
                     // Client-side validations
                     if (!moveInDate) {
                       throw new Error("Please select a valid move-in date.");
+                    }
+
+                    if (!tenantId) {
+                      throw new Error(
+                        "Tenant account information is missing. Please login again.",
+                      );
                     }
 
                     // Prevent selecting past dates
@@ -194,9 +205,10 @@ const OrderNow = () => {
                     // Create booking via API
                     const booking = await createBooking({
                       property_id: property.id,
+                      tenant_id: tenantId,
                       move_in_date: moveInDate || null,
                       duration,
-                      message,
+                      message: finalMessage,
                     });
 
                     if (booking) {

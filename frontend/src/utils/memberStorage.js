@@ -7,55 +7,17 @@ const readJSON = (key, fallback) => {
   }
 };
 
+import http from "./http";
 const API_BASE_URL =
   import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
-const ADMIN_API_URL = API_BASE_URL ? `${API_BASE_URL}/api/v1/admin` : "";
-
-const getAuthToken = () => {
-  try {
-    return localStorage.getItem("token") || "";
-  } catch {
-    return "";
-  }
-};
-
-const requestJson = async (url, options = {}) => {
-  if (!ADMIN_API_URL) {
-    throw new Error("Admin API URL is not configured.");
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : null;
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.message || `Request failed with status ${response.status}`,
-    );
-  }
-
-  return payload;
-};
+const ADMIN_API_URL = API_BASE_URL ? `/api/v1/admin` : "";
 
 const fetchAdminProfileFromBackend = async () => {
   if (!ADMIN_API_URL) return null;
 
   try {
-    const response = await requestJson(`${ADMIN_API_URL}/profile`, {
-      method: "GET",
-    });
-    return normalizeMemberRecord(response?.data || null);
+    const res = await http.get(`${ADMIN_API_URL}/profile`);
+    return normalizeMemberRecord(res?.data?.data || res?.data || null);
   } catch (err) {
     // Backend not available or request failed - fall back to local
     return null;
@@ -66,12 +28,8 @@ const updateAdminProfileToBackend = async (profile) => {
   if (!ADMIN_API_URL) return null;
 
   try {
-    const response = await requestJson(`${ADMIN_API_URL}/profile`, {
-      method: "PUT",
-      body: JSON.stringify(profile),
-    });
-
-    return normalizeMemberRecord(response?.data || profile);
+    const res = await http.put(`${ADMIN_API_URL}/profile`, profile);
+    return normalizeMemberRecord(res?.data?.data || res?.data || profile);
   } catch (err) {
     // If backend fails, silently return null so caller can fallback
     return null;
