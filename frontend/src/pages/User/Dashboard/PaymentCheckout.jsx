@@ -74,12 +74,8 @@ const PaymentCheckout = () => {
     const monthlyRent = Number.parseFloat(
       String(property?.price || 0).replace(/[^0-9.]/g, ""),
     );
-    const durationMonths = Number.parseInt(
-      String(booking?.duration || 1).replace(/[^0-9]/g, ""),
-      10,
-    );
 
-    return (monthlyRent || 0) * (durationMonths > 0 ? durationMonths : 1);
+    return monthlyRent || 0;
   }, [booking?.duration, property?.price]);
 
   const formatCurrency = (value) =>
@@ -236,7 +232,7 @@ const PaymentCheckout = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-dashed border-gray-300 pt-3 text-base font-semibold text-gray-900">
-                    <span>Total amount</span>
+                    <span>Advance Payment (1 Month)</span>
                     <span>{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>

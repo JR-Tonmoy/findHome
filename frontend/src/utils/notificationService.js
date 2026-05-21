@@ -175,7 +175,7 @@ export const initiateBookingPayment = async ({ bookingId, paymentMethod }) => {
       booking_id: bookingId,
       payment_method: paymentMethod,
     });
-    return res?.data || null;
+    return res?.data?.data || null;
   } catch (err) {
     console.error("Failed to initiate booking payment:", err);
     throw err;
@@ -220,7 +220,7 @@ export const fetchBooking = async (bookingId) => {
 
   try {
     const res = await http.get(`${BOOKING_API_URL}/${bookingId}`);
-    return res?.data || null;
+    return res?.data?.data || null;
   } catch (err) {
     console.warn("Failed to fetch booking:", err);
     return null;

@@ -26,6 +26,10 @@ const OwnerPaymentHistory = () => {
     adminCommission: 0,
     completedPayments: 0,
   });
+  const [commissionRates, setCommissionRates] = useState({
+    admin: 5,
+    owner: 95,
+  });
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -47,6 +51,15 @@ const OwnerPaymentHistory = () => {
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
+            const adminRate = Number(result.meta?.admin_commission_rate ?? 5);
+            const ownerRate = Number(
+              result.meta?.owner_earning_rate ?? 100 - adminRate,
+            );
+            setCommissionRates({
+              admin: adminRate,
+              owner: ownerRate,
+            });
+
             // Filter payments where user is the property owner
             const ownerPayments = (result.data || []).filter(
               (payment) => payment.property?.user_id === user?.id
@@ -184,7 +197,7 @@ const OwnerPaymentHistory = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-600 text-sm font-medium mb-1">
-                Total Earnings (80%)
+                Total Earnings ({commissionRates.owner}%)
               </p>
               <p className="text-3xl font-bold text-emerald-700">
                 {formatCurrency(stats.totalEarnings)}
@@ -202,7 +215,7 @@ const OwnerPaymentHistory = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-600 text-sm font-medium mb-1">
-                Admin Commission (20%)
+                Admin Commission ({commissionRates.admin}%)
               </p>
               <p className="text-3xl font-bold text-blue-700">
                 {formatCurrency(stats.adminCommission)}
@@ -289,7 +302,7 @@ const OwnerPaymentHistory = () => {
                     Total Amount
                   </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
-                    Your Earnings (80%)
+                    Your Earnings ({commissionRates.owner}%)
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                     Transaction ID

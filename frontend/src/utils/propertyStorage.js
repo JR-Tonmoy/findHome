@@ -47,21 +47,110 @@ const requestJson = async (url, options = {}) => {
     return res?.data;
   }
 
-  // post/put
-  const body = options.body ? JSON.parse(options.body) : options.data || {};
-  if (method === "post") {
-    const res = await http.post(url, body);
-    return res?.data;
+  const body = options.body || options.data || {};
+  const requestConfig = {
+    url,
+    method,
+    data: body,
+  };
+
+  if (body instanceof FormData) {
+    requestConfig.headers = {
+      "Content-Type": undefined,
+    };
   }
 
-  if (method === "put") {
-    const res = await http.put(url, body);
-    return res?.data;
-  }
-
-  // fallback
-  const res = await http.request({ url, method, data: body });
+  const res = await http.request(requestConfig);
   return res?.data;
+};
+
+const appendPropertyField = (formData, key, value) => {
+  if (value === null || value === undefined || value === "") {
+    return;
+  }
+
+  if (Array.isArray(value) || typeof value === "object") {
+    formData.append(key, JSON.stringify(value));
+    return;
+  }
+
+  formData.append(key, value);
+};
+
+const buildPropertyRequestBody = (property) => {
+  const imageFiles = Array.isArray(property.imageFiles)
+    ? property.imageFiles.filter(Boolean)
+    : [];
+
+  if (imageFiles.length > 0) {
+    const formData = new FormData();
+
+    const safeImages = (Array.isArray(property.images) ? property.images : [])
+      .filter(Boolean)
+      .filter((img) => {
+        if (typeof img !== "string") return false;
+        const lower = img.toLowerCase();
+        return !(lower.startsWith("blob:") || lower.startsWith("data:"));
+      });
+
+    appendPropertyField(formData, "title", property.title);
+    appendPropertyField(formData, "category", property.category);
+    appendPropertyField(formData, "type", property.type);
+    appendPropertyField(formData, "location", property.location);
+    appendPropertyField(formData, "price", property.price);
+    appendPropertyField(formData, "priceType", property.priceType);
+    appendPropertyField(formData, "beds", property.beds);
+    appendPropertyField(formData, "baths", property.baths);
+    appendPropertyField(formData, "bedrooms", property.bedrooms);
+    appendPropertyField(formData, "bathrooms", property.bathrooms);
+    appendPropertyField(formData, "sqft", property.sqft);
+    appendPropertyField(formData, "floor", property.floor);
+    appendPropertyField(formData, "description", property.description);
+    appendPropertyField(formData, "month", property.month);
+    appendPropertyField(
+      formData,
+      "available_from_month",
+      property.available_from_month,
+    );
+    appendPropertyField(formData, "shortAddress", property.shortAddress);
+    appendPropertyField(formData, "division", property.division);
+    appendPropertyField(formData, "district", property.district);
+    appendPropertyField(formData, "area", property.area);
+    appendPropertyField(formData, "sectorNo", property.sectorNo);
+    appendPropertyField(formData, "roadNo", property.roadNo);
+    appendPropertyField(formData, "houseNo", property.houseNo);
+    appendPropertyField(formData, "balcony", property.balcony);
+    appendPropertyField(formData, "gender", property.gender);
+    appendPropertyField(formData, "status", property.status || "active");
+    appendPropertyField(formData, "features", property.features || []);
+    appendPropertyField(formData, "raw", property.raw || {});
+    appendPropertyField(formData, "images", safeImages);
+
+    imageFiles.forEach((file) => {
+      formData.append("images[]", file);
+    });
+
+    return formData;
+  }
+
+  // If there are no raw File objects, make a safe JSON payload.
+  // Filter out any blob: or data: URLs which should never be persisted.
+  const safeImages = (Array.isArray(property.images) ? property.images : [])
+    .filter(Boolean)
+    .filter((img) => {
+      if (typeof img !== "string") return false;
+      const lower = img.toLowerCase();
+      return !(lower.startsWith("blob:") || lower.startsWith("data:"));
+    });
+
+  return {
+    ...property,
+    images: safeImages,
+    image: safeImages[0] || property.image || "",
+    status: property.status || "active",
+    features: Array.isArray(property.features) ? property.features : [],
+    raw: property.raw || {},
+  };
 };
 
 const makePropertyId = () => {
@@ -83,17 +172,69 @@ const toNumberOrNull = (value) => {
 };
 
 const normalizePropertyRecord = (property = {}) => {
-  const images = Array.isArray(property.images)
+  // Helper function to resolve image URLs coming from backend
+  const resolveImageUrl = (img) => {
+    if (!img || typeof img !== "string") return "";
+
+    const trimmed = String(img).trim();
+    if (!trimmed) return "";
+
+    // If already a full absolute URL, return as-is
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed;
+    }
+
+    // Filter out blob and data URLs (should never be persisted)
+    const lower = trimmed.toLowerCase();
+    if (lower.startsWith("blob:") || lower.startsWith("data:")) {
+      return "";
+    }
+
+    // Remove any leading slash
+    const pathOnly = trimmed.replace(/^\/+/, "");
+
+    // If path looks like "storage/property-images/..." or starts with "property-images/"
+    if (pathOnly.startsWith("storage/property-images/")) {
+      // Already in correct format: storage/property-images/file.jpg
+      return API_BASE_URL ? `${API_BASE_URL}/${pathOnly}` : `/${pathOnly}`;
+    }
+
+    if (pathOnly.startsWith("property-images/")) {
+      // Convert to /storage/property-images/file.jpg
+      return API_BASE_URL
+        ? `${API_BASE_URL}/storage/${pathOnly}`
+        : `/storage/${pathOnly}`;
+    }
+
+    // If path already starts with just "storage/", use it as-is
+    if (pathOnly.startsWith("storage/")) {
+      return API_BASE_URL ? `${API_BASE_URL}/${pathOnly}` : `/${pathOnly}`;
+    }
+
+    // For any other path, assume it's a storage-relative path and prepend /storage/
+    return API_BASE_URL
+      ? `${API_BASE_URL}/storage/${pathOnly}`
+      : `/storage/${pathOnly}`;
+  };
+
+  // Extract images array or fall back to single image field
+  let images = Array.isArray(property.images)
     ? property.images.filter(Boolean)
-    : property.image
-      ? [property.image]
-      : [];
+    : [];
+
+  // Add single image if provided and not already in array
+  if (property.image && (!images || images.length === 0)) {
+    images = [property.image];
+  }
+
+  // Resolve all image URLs
+  const resolvedImages = images.map(resolveImageUrl).filter(Boolean);
 
   // Ensure there are at least 3 images for the gallery view by
   // duplicating the first image as fallback when fewer are provided.
-  if (images.length > 0 && images.length < 3) {
-    while (images.length < 3) {
-      images.push(images[0]);
+  if (resolvedImages.length > 0 && resolvedImages.length < 3) {
+    while (resolvedImages.length < 3) {
+      resolvedImages.push(resolvedImages[0]);
     }
   }
 
@@ -129,14 +270,19 @@ const normalizePropertyRecord = (property = {}) => {
     floor: property.floor || "",
     description: property.description || "",
     features: Array.isArray(property.features) ? property.features : [],
-    images,
-    image: property.image || images[0] || "",
+    images: resolvedImages,
+    image:
+      property.image ||
+      resolvedImages[0] ||
+      "https://placehold.co/400x300?text=No+Image",
     owner: property.owner || {
       name: "Property Owner",
       phone: "N/A",
       email: "N/A",
     },
     month: property.month || "",
+    available_from_month:
+      property.available_from_month || property.raw?.available_from_month || "",
     priceType: property.priceType || "Monthly",
     shortAddress: property.shortAddress || "",
     division: property.division || "",
@@ -177,10 +323,19 @@ const persistPropertyToBackend = async (property, method) => {
       method === "POST"
         ? PROPERTY_API_URL
         : `${PROPERTY_API_URL}/${encodeURIComponent(property.id)}`;
+    const body = buildPropertyRequestBody(property);
+
+    let requestMethod = method;
+    if (body instanceof FormData && method === "PUT") {
+      requestMethod = "POST";
+      if (!body.has("_method")) {
+        body.append("_method", "PUT");
+      }
+    }
 
     const response = await requestJson(url, {
-      method,
-      body: JSON.stringify(property),
+      method: requestMethod,
+      body,
     });
 
     if (!response || !response.data) {
@@ -217,8 +372,12 @@ const fetchOwnerProperties = async () => {
       ? payload.map((property) => normalizePropertyRecord(property))
       : [];
 
-    writeStoredProperties(ownerProperties, { notify: false });
-    return ownerProperties;
+    if (ownerProperties.length > 0) {
+      writeStoredProperties(ownerProperties, { notify: false });
+      return ownerProperties;
+    }
+
+    return getStoredProperties();
   } catch {
     return getStoredProperties();
   }
@@ -239,7 +398,19 @@ const fetchOwnerDashboardStats = async () => {
     const response = await requestJson(`${OWNER_API_URL}/dashboard-stats`, {
       method: "GET",
     });
-    return response?.data || response || {};
+    const remoteStats = response?.data || response || {};
+
+    if (remoteStats && Object.keys(remoteStats).length > 0) {
+      return remoteStats;
+    }
+
+    const local = getStoredProperties();
+    return {
+      total_properties: local.length,
+      available_properties: local.filter((p) => p.status === "active").length,
+      occupied_properties: local.filter((p) => p.status === "rented").length,
+      pending_booking_requests: 0,
+    };
   } catch {
     const local = getStoredProperties();
     return {
@@ -254,6 +425,13 @@ const fetchOwnerDashboardStats = async () => {
 const saveProperty = async (property) => {
   const currentProperties = getStoredProperties();
   const nextProperty = normalizePropertyRecord(property);
+  const requestProperty = {
+    ...nextProperty,
+    imageFiles: property.imageFiles,
+    images: Array.isArray(property.images)
+      ? property.images
+      : nextProperty.images,
+  };
   const method = property.id ? "PUT" : "POST";
   const isUpdate = currentProperties.some(
     (storedProperty) => storedProperty.id === nextProperty.id,
@@ -263,15 +441,11 @@ const saveProperty = async (property) => {
 
   // Require actual backend database save before confirming success
   try {
-    savedProperty = await persistPropertyToBackend(nextProperty, method);
+    savedProperty = await persistPropertyToBackend(requestProperty, method);
   } catch (error) {
     // If update failed, try as new property (POST)
     if (method === "PUT") {
-      try {
-        savedProperty = await persistPropertyToBackend(nextProperty, "POST");
-      } catch (fallbackError) {
-        throw fallbackError;
-      }
+      savedProperty = await persistPropertyToBackend(requestProperty, "POST");
     } else {
       throw error;
     }

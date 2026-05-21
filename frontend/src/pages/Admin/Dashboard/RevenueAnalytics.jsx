@@ -11,6 +11,10 @@ const RevenueAnalytics = () => {
     admin_commission: 0,
     owner_earnings: 0,
   });
+  const [commissionRates, setCommissionRates] = useState({
+    admin: 5,
+    owner: 95,
+  });
   const [payments, setPayments] = useState([]);
   const [filteredPayments, setFilteredPayments] = useState([]);
   const [filterStatus, setFilterStatus] = useState("");
@@ -38,6 +42,15 @@ const RevenueAnalytics = () => {
             revStats.admin_commission || revStats.admin_commission || 0,
           owner_earnings:
             revStats.owner_earnings || revStats.owner_earnings || 0,
+        });
+
+        const adminRate = Number(revStats.admin_commission_rate ?? 5);
+        const ownerRate = Number(
+          revStats.owner_earning_rate ?? 100 - adminRate,
+        );
+        setCommissionRates({
+          admin: adminRate,
+          owner: ownerRate,
         });
 
         const normalized = (Array.isArray(paymentsRes) ? paymentsRes : []).map(
@@ -176,7 +189,7 @@ const RevenueAnalytics = () => {
           <p className="text-xs text-gray-400 mt-1">All transactions</p>
         </div>
 
-        {/* Total Admin Commission (20%) */}
+        {/* Total Admin Commission */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
           <div className="flex items-center justify-between mb-4">
             <div className="bg-orange-100 text-orange-600 w-12 h-12 rounded-lg flex items-center justify-center">
@@ -189,10 +202,12 @@ const RevenueAnalytics = () => {
           <h3 className="text-gray-600 text-sm font-medium">
             Admin Commission
           </h3>
-          <p className="text-xs text-gray-400 mt-1">20% of revenue</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {commissionRates.admin}% of revenue
+          </p>
         </div>
 
-        {/* Total Owner Earnings (80%) */}
+        {/* Total Owner Earnings */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
           <div className="flex items-center justify-between mb-4">
             <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
@@ -203,7 +218,9 @@ const RevenueAnalytics = () => {
             </span>
           </div>
           <h3 className="text-gray-600 text-sm font-medium">Owner Earnings</h3>
-          <p className="text-xs text-gray-400 mt-1">80% distributed</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {commissionRates.owner}% distributed
+          </p>
         </div>
       </div>
 
@@ -287,10 +304,12 @@ const RevenueAnalytics = () => {
                       {formatCurrency(payment.total_payment)}
                     </td>
                     <td className="px-6 py-4 text-sm text-orange-600 font-medium">
-                      {formatCurrency(payment.admin_commission)} (20%)
+                      {formatCurrency(payment.admin_commission)} (
+                      {commissionRates.admin}%)
                     </td>
                     <td className="px-6 py-4 text-sm text-green-600 font-medium">
-                      {formatCurrency(payment.owner_earning)} (80%)
+                      {formatCurrency(payment.owner_earning)} (
+                      {commissionRates.owner}%)
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -331,11 +350,15 @@ const RevenueAnalytics = () => {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-blue-700">Admin Commission:</span>
-              <span className="font-bold text-blue-900">20%</span>
+              <span className="font-bold text-blue-900">
+                {commissionRates.admin}%
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-blue-700">Owner Share:</span>
-              <span className="font-bold text-blue-900">80%</span>
+              <span className="font-bold text-blue-900">
+                {commissionRates.owner}%
+              </span>
             </div>
           </div>
         </div>

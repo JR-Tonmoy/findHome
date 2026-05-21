@@ -21,6 +21,20 @@ const textInputClass =
 const sectionClass = "rounded-xl border border-gray-200 bg-white p-4 md:p-5";
 
 const floorOptions = ["Ground", "1st", "2nd"];
+const monthNames = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
 
 const AddProperty = () => {
   const navigate = useNavigate();
@@ -56,11 +70,37 @@ const AddProperty = () => {
   const [district, setDistrict] = useState("");
   const [area, setArea] = useState("");
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploadedImageFiles, setUploadedImageFiles] = useState([]);
   const [imageInputKey, setImageInputKey] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
+  const [statusType, setStatusType] = useState("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentOwner = user || {};
   const isEditing = Boolean(editingProperty);
+
+  const toMonthInputValue = (value) => {
+    if (!value) return "";
+    const trimmed = String(value).trim();
+
+    if (/^\d{4}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed.slice(0, 7);
+    }
+
+    const match = trimmed.match(/^([A-Za-z]+)(?:\s+(\d{4}))?$/);
+    if (!match) return "";
+
+    const monthIndex = monthNames.indexOf(match[1].toLowerCase());
+    if (monthIndex < 0) return "";
+
+    const year = match[2] || String(new Date().getFullYear());
+    const monthValue = String(monthIndex + 1).padStart(2, "0");
+
+    return `${year}-${monthValue}`;
+  };
 
   const isDivisionSelected = Boolean(DISTRICTS_BY_DIVISION[division]);
 
@@ -96,8 +136,10 @@ const AddProperty = () => {
         setDistrict("");
         setArea("");
         setUploadedImages([]);
+        setUploadedImageFiles([]);
         setImageInputKey((currentKey) => currentKey + 1);
         setStatusMessage("");
+        setStatusType("idle");
         return;
       }
 
@@ -105,16 +147,19 @@ const AddProperty = () => {
       setDivision(editingProperty.division || "");
       setDistrict(editingProperty.district || "");
       setArea(editingProperty.area || "");
-      setUploadedImages(
-        Array.isArray(editingProperty.images) &&
-          editingProperty.images.length > 0
-          ? editingProperty.images
-          : editingProperty.image
-            ? [editingProperty.image]
-            : [],
+      const existingImages = Array.isArray(editingProperty.images)
+        ? editingProperty.images
+        : editingProperty.image
+          ? [editingProperty.image]
+          : [];
+      const uniqueExistingImages = Array.from(
+        new Set(existingImages.filter(Boolean)),
       );
+      setUploadedImages(uniqueExistingImages);
+      setUploadedImageFiles([]);
       setImageInputKey((currentKey) => currentKey + 1);
       setStatusMessage("");
+      setStatusType("idle");
     });
 
     return () => {
@@ -140,62 +185,31 @@ const AddProperty = () => {
       return;
     }
 
-    // Compress images to avoid localStorage quota issues
-    const nextImages = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise((resolve, reject) => {
-            const reader = new FileReader();
-
-            reader.onload = () => {
-              const img = new Image();
-              img.onload = () => {
-                // Create canvas and resize image to reduce size
-                const canvas = document.createElement("canvas");
-                const maxWidth = 400;
-                const maxHeight = 400;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                  if (width > maxWidth) {
-                    height = (height * maxWidth) / width;
-                    width = maxWidth;
-                  }
-                } else {
-                  if (height > maxHeight) {
-                    width = (width * maxHeight) / height;
-                    height = maxHeight;
-                  }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Convert to webp or jpeg with compression
-                const compressed = canvas.toDataURL("image/jpeg", 0.6);
-                resolve(compressed);
-              };
-              img.onerror = () => reject(new Error("Failed to load image"));
-              img.src = String(reader.result);
-            };
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-          }),
-      ),
-    );
+    const newEntries = files.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    const nextImages = newEntries.map((entry) => entry.previewUrl);
 
     setUploadedImages((currentImages) => [...currentImages, ...nextImages]);
+    setUploadedImageFiles((currentFiles) => [...currentFiles, ...newEntries]);
     setImageInputKey((currentKey) => currentKey + 1);
     event.target.value = "";
   };
 
   const handleRemoveImage = (imageIndex) => {
+    const imageToRemove = uploadedImages[imageIndex];
+
     setUploadedImages((currentImages) =>
       currentImages.filter((_, index) => index !== imageIndex),
     );
+    setUploadedImageFiles((currentFiles) => {
+      if (!imageToRemove || !String(imageToRemove).startsWith("blob:")) {
+        return currentFiles;
+      }
+      URL.revokeObjectURL(imageToRemove);
+      return currentFiles.filter((entry) => entry.previewUrl !== imageToRemove);
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -204,6 +218,7 @@ const AddProperty = () => {
 
     setIsSubmitting(true);
     setStatusMessage("Saving property...");
+    setStatusType("idle");
 
     // Validate required fields
     const title = String(event.currentTarget.title?.value || "").trim();
@@ -213,6 +228,9 @@ const AddProperty = () => {
     const shortAddress = String(
       event.currentTarget.shortAddress?.value || "",
     ).trim();
+    const availableFromMonth = String(
+      event.currentTarget.available_from_month?.value || "",
+    ).trim();
 
     if (!title) {
       setStatusMessage("Error: Property title is required");
@@ -221,6 +239,16 @@ const AddProperty = () => {
     }
     if (!price) {
       setStatusMessage("Error: Price is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!event.currentTarget.category?.value) {
+      setStatusMessage("Error: Category is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!event.currentTarget.propertyType?.value) {
+      setStatusMessage("Error: Property type is required");
       setIsSubmitting(false);
       return;
     }
@@ -234,8 +262,38 @@ const AddProperty = () => {
       setIsSubmitting(false);
       return;
     }
+    if (!String(event.currentTarget.sqft?.value || "").trim()) {
+      setStatusMessage("Error: Square feet is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!String(event.currentTarget.floor?.value || "").trim()) {
+      setStatusMessage("Error: Floor is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!String(event.currentTarget.division?.value || "").trim()) {
+      setStatusMessage("Error: Division is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!String(event.currentTarget.district?.value || "").trim()) {
+      setStatusMessage("Error: District is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!String(event.currentTarget.area?.value || "").trim()) {
+      setStatusMessage("Error: Area is required");
+      setIsSubmitting(false);
+      return;
+    }
     if (!shortAddress) {
       setStatusMessage("Error: Short address is required");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!availableFromMonth) {
+      setStatusMessage("Error: Available from month is required");
       setIsSubmitting(false);
       return;
     }
@@ -244,12 +302,35 @@ const AddProperty = () => {
     const facilities = formData.getAll("facilities");
 
     try {
-      const property = await saveProperty({
+      // Separate new files from existing image URLs
+      const newImageFiles = uploadedImageFiles
+        .map((entry) => entry?.file)
+        .filter(Boolean);
+      const existingImageUrls = uploadedImages.filter((img) => {
+        // Filter out blob URLs (those are for preview only)
+        // Keep storage/http URLs which are actual persisted images
+        if (!img || typeof img !== "string") return false;
+        const lower = img.toLowerCase();
+        return !lower.startsWith("blob:");
+      });
+
+      // Only send persisted image URLs (never blob URLs)
+      const imagesToSend = existingImageUrls;
+
+      const monthLabel = new Date(
+        `${availableFromMonth}-01T00:00:00`,
+      ).toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+
+      await saveProperty({
         id: editingProperty?.id,
         title: title,
         category: String(formData.get("propertyType") || "Family"),
         type: String(formData.get("category") || "Property"),
-        month: String(formData.get("month") || ""),
+        month: monthLabel,
+        available_from_month: availableFromMonth,
         location: [
           formData.get("area"),
           formData.get("district"),
@@ -274,8 +355,9 @@ const AddProperty = () => {
         shortAddress: shortAddress,
         description: String(formData.get("description") || "").trim(),
         features: facilities,
-        images: uploadedImages,
-        image: uploadedImages[0] || "",
+        images: imagesToSend,
+        imageFiles: newImageFiles,
+        image: imagesToSend[0] || "",
         owner: {
           name: currentOwner?.fullName || "Property Owner",
           phone: currentOwner?.phone || "N/A",
@@ -287,8 +369,11 @@ const AddProperty = () => {
 
       // Show success message only after database save confirmation
       setStatusMessage(
-        `✓ ${property.title} ${isEditing ? "updated" : "saved"} successfully to database.`,
+        isEditing
+          ? "Property updated successfully"
+          : "Property added successfully",
       );
+      setStatusType("success");
 
       // Wait a moment for user to see success, then redirect to dashboard
       setTimeout(() => {
@@ -299,13 +384,14 @@ const AddProperty = () => {
       console.error("Property save error:", error);
       const errorMsg =
         error?.response?.data?.message ||
-        error?.response?.data?.errors ||
+        (error?.response?.data?.errors
+          ? Object.values(error.response.data.errors).flat().join(" ")
+          : null) ||
         error?.message ||
         String(error);
 
-      setStatusMessage(
-        `✗ Error: ${errorMsg}. Please check your data and try again.`,
-      );
+      setStatusMessage(`Error: ${errorMsg}`);
+      setStatusType("error");
       setIsSubmitting(false);
     }
   };
@@ -359,29 +445,18 @@ const AddProperty = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
-                Month*
+                Available From Month*
               </label>
-              <select
-                name="month"
+              <input
+                name="available_from_month"
+                type="month"
                 className={selectInputClass}
-                defaultValue={editingProperty?.month || ""}
-              >
-                <option value="" disabled>
-                  Select an option
-                </option>
-                <option>January</option>
-                <option>February</option>
-                <option>March</option>
-                <option>April</option>
-                <option>May</option>
-                <option>June</option>
-                <option>July</option>
-                <option>August</option>
-                <option>September</option>
-                <option>October</option>
-                <option>November</option>
-                <option>December</option>
-              </select>
+                defaultValue={toMonthInputValue(
+                  editingProperty?.available_from_month ||
+                    editingProperty?.month ||
+                    "",
+                )}
+              />
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-1 block">
@@ -814,7 +889,7 @@ const AddProperty = () => {
         </div>
         {statusMessage ? (
           <p
-            className={`text-sm font-medium ${statusMessage.startsWith("Error") ? "text-red-600" : "text-green-600"}`}
+            className={`text-sm font-medium ${statusType === "error" ? "text-red-600" : "text-green-600"}`}
           >
             {statusMessage}
           </p>

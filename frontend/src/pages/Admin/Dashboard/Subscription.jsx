@@ -12,6 +12,10 @@ const Subscription = () => {
     admin_commission: 0,
     owner_earnings: 0,
   });
+  const [commissionRates, setCommissionRates] = useState({
+    admin: 5,
+    owner: 95,
+  });
   const [payments, setPayments] = useState([]);
   const [filteredPayments, setFilteredPayments] = useState([]);
   const [filterStatus, setFilterStatus] = useState(""); // "" = all, "completed", "pending", etc.
@@ -39,6 +43,15 @@ const Subscription = () => {
             revStats.admin_commission || revStats.admin_commission || 0,
           owner_earnings:
             revStats.owner_earnings || revStats.owner_earnings || 0,
+        });
+
+        const adminRate = Number(revStats.admin_commission_rate ?? 5);
+        const ownerRate = Number(
+          revStats.owner_earning_rate ?? 100 - adminRate,
+        );
+        setCommissionRates({
+          admin: adminRate,
+          owner: ownerRate,
         });
 
         const normalized = (Array.isArray(paymentsRes) ? paymentsRes : []).map(
@@ -192,7 +205,7 @@ const Subscription = () => {
             <p className="text-xs text-gray-400 mt-1">All transactions</p>
           </div>
 
-          {/* Admin Commission (20%) */}
+          {/* Admin Commission */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-orange-100 text-orange-600 w-12 h-12 rounded-lg flex items-center justify-center">
@@ -205,10 +218,12 @@ const Subscription = () => {
             <h3 className="text-gray-600 text-sm font-medium">
               Admin Commission
             </h3>
-            <p className="text-xs text-gray-400 mt-1">20% of revenue</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {commissionRates.admin}% of revenue
+            </p>
           </div>
 
-          {/* Owner Earnings (80%) */}
+          {/* Owner Earnings */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
@@ -221,7 +236,9 @@ const Subscription = () => {
             <h3 className="text-gray-600 text-sm font-medium">
               Owner Earnings
             </h3>
-            <p className="text-xs text-gray-400 mt-1">80% distributed</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {commissionRates.owner}% distributed
+            </p>
           </div>
         </div>
 
@@ -346,16 +363,21 @@ const Subscription = () => {
               Revenue Breakdown
             </h3>
             <p className="text-xs text-blue-700 mb-3">
-              20% goes to admin, 80% to property owners
+              {commissionRates.admin}% goes to admin, {commissionRates.owner}%
+              to property owners
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Admin Share:</span>
-                <span className="font-bold text-blue-900">20%</span>
+                <span className="font-bold text-blue-900">
+                  {commissionRates.admin}%
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Owner Share:</span>
-                <span className="font-bold text-blue-900">80%</span>
+                <span className="font-bold text-blue-900">
+                  {commissionRates.owner}%
+                </span>
               </div>
             </div>
           </div>

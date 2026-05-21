@@ -31,6 +31,10 @@ const Dashboard = () => {
     adminCommission: 0,
     completedPayments: 0,
   });
+  const [commissionRates, setCommissionRates] = useState({
+    admin: 5,
+    owner: 95,
+  });
   const [recentActivity, setRecentActivity] = useState([]);
   const [revenueData, setRevenueData] = useState({
     totalAdminEarnings: 0,
@@ -67,23 +71,40 @@ const Dashboard = () => {
         const totalBookings = Array.isArray(bookings) ? bookings.length : 0;
         const totalPayments = Array.isArray(payments) ? payments.length : 0;
 
+        const adminRate = Number(revenue?.admin_commission_rate ?? 5);
+        const ownerRate = Number(
+          revenue?.owner_earning_rate ?? 100 - adminRate,
+        );
+
         // Calculate revenue and commission
-        const totalRevenue = Array.isArray(payments)
-          ? payments.reduce(
-              (sum, p) => sum + Number(p.total_payment || p.amount || 0),
-              0,
-            )
-          : 0;
-        const adminCommissionPercent = 20; // 20% for admin
-        const adminCommission = (totalRevenue * adminCommissionPercent) / 100;
-        const completedPayments = Array.isArray(payments)
-          ? payments.filter(
-              (p) =>
-                p.payment_status === "paid" ||
-                p.status === "completed" ||
-                p.paid === true,
-            ).length
-          : 0;
+        const totalRevenue = Number(
+          revenue?.total_revenue ??
+            (Array.isArray(payments)
+              ? payments.reduce(
+                  (sum, p) => sum + Number(p.total_payment || p.amount || 0),
+                  0,
+                )
+              : 0),
+        );
+        const adminCommission = Number(
+          revenue?.admin_commission ?? (totalRevenue * adminRate) / 100,
+        );
+        const completedPayments = Number(
+          revenue?.total_completed_payments ??
+            (Array.isArray(payments)
+              ? payments.filter(
+                  (p) =>
+                    p.payment_status === "paid" ||
+                    p.status === "completed" ||
+                    p.paid === true,
+                ).length
+              : 0),
+        );
+
+        setCommissionRates({
+          admin: adminRate,
+          owner: ownerRate,
+        });
 
         setStats({
           totalUsers,
@@ -97,7 +118,9 @@ const Dashboard = () => {
         });
 
         // Build revenue data
-        const ownerEarnings = totalRevenue - adminCommission;
+        const ownerEarnings = Number(
+          revenue?.owner_earnings ?? totalRevenue - adminCommission,
+        );
         setRevenueData({
           totalAdminEarnings: Math.round(adminCommission),
           totalOwnerEarnings: Math.round(ownerEarnings),
@@ -395,7 +418,7 @@ const Dashboard = () => {
           </div>
           <div>
             <p className="text-gray-500 text-sm font-medium mb-1">
-              Admin Earnings (20%)
+              Admin Earnings ({commissionRates.admin}%)
             </p>
             <h3 className="text-3xl font-black text-gray-900">
               {loading ? "-" : `$${stats.adminCommission.toLocaleString()}`}

@@ -72,6 +72,9 @@ const normalizePublicProperty = (property = {}) => {
       avatar: ownerAvatar,
       profile_image: ownerProfileImage,
     },
+    available_from_month:
+      property.available_from_month || property.raw?.available_from_month || "",
+    month: property.month || "",
   };
 };
 

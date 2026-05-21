@@ -21,6 +21,53 @@ const OrderNow = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const monthNames = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+  ];
+
+  const toDateOnlyString = (date) => date.toISOString().slice(0, 10);
+
+  const resolveAvailableFromDate = (value) => {
+    if (!value) return null;
+    const trimmed = String(value).trim();
+
+    if (/^\d{4}-\d{2}$/.test(trimmed)) {
+      return new Date(`${trimmed}-01T00:00:00`);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return new Date(`${trimmed}T00:00:00`);
+    }
+
+    const match = trimmed.match(/^([A-Za-z]+)(?:\s+(\d{4}))?$/);
+    if (!match) return null;
+
+    const monthIndex = monthNames.indexOf(match[1].toLowerCase());
+    if (monthIndex < 0) return null;
+
+    const year = Number(match[2] || new Date().getFullYear());
+    const candidate = new Date(year, monthIndex, 1);
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    thisMonth.setHours(0, 0, 0, 0);
+
+    if (candidate < thisMonth) {
+      return new Date(year + 1, monthIndex, 1);
+    }
+
+    return candidate;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -32,6 +79,12 @@ const OrderNow = () => {
         const resolvedProperty = await resolvePublicPropertyById(id);
 
         if (isMounted) {
+          if (resolvedProperty) {
+            console.log(
+              "available_from_month:",
+              resolvedProperty.available_from_month,
+            );
+          }
           setProperty(resolvedProperty);
         }
       } finally {
@@ -83,6 +136,18 @@ const OrderNow = () => {
       </div>
     );
   }
+
+  const availableFromDate = resolveAvailableFromDate(
+    property.available_from_month,
+  );
+  const minMoveInDate = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (availableFromDate && availableFromDate > today) {
+      return toDateOnlyString(availableFromDate);
+    }
+    return toDateOnlyString(today);
+  })();
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -175,8 +240,10 @@ const OrderNow = () => {
                     }
 
                     // Prevent selecting past dates
-                    if (moveInDate < todayStr) {
-                      throw new Error("Move-in date cannot be in the past.");
+                    if (moveInDate < minMoveInDate) {
+                      throw new Error(
+                        "Move-in date must be within the owner's available month or later.",
+                      );
                     }
 
                     // Prevent duplicate bookings for the same property
@@ -314,8 +381,8 @@ const OrderNow = () => {
                     <input
                       name="moveInDate"
                       type="date"
-                      min={todayStr}
-                      defaultValue={todayStr}
+                      min={minMoveInDate}
+                      defaultValue={minMoveInDate}
                       placeholder="MM/DD/YYYY"
                       lang="en-US"
                       className="w-full h-12 px-4 text-base text-gray-800 bg-white border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all [color-scheme:light]"

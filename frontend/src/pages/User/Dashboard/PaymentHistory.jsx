@@ -37,12 +37,8 @@ const PaymentHistory = () => {
         "",
       ),
     );
-    const durationMonths = Number.parseInt(
-      String(booking?.duration || booking?.months || 1).replace(/[^0-9]/g, ""),
-      10,
-    );
 
-    return (monthlyRent || 0) * (durationMonths > 0 ? durationMonths : 1);
+    return monthlyRent || 0;
   };
 
   const mapBookingsToPendingPayments = (bookingRows, paidBookingIds) =>
