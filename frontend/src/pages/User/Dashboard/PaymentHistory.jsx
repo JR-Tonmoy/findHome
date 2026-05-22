@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   Calendar,
   CreditCard,
@@ -13,6 +14,59 @@ import {
   fetchTenantPayments,
 } from "../../../utils/notificationService";
 
+const calculateBookingTotal = (booking) => {
+  const monthlyRent = Number.parseFloat(
+    String(booking?.property?.price || booking?.property_price || 0).replace(
+      /[^0-9.]/g,
+      "",
+    ),
+  );
+
+  return monthlyRent || 0;
+};
+
+const mapBookingsToPendingPayments = (bookingRows, paidBookingIds) =>
+  bookingRows
+    .filter((booking) =>
+      ["approved", "confirmed"].includes(String(booking.status)),
+    )
+    .filter((booking) => !paidBookingIds.has(Number(booking.id)))
+    .map((booking) => ({
+      id: `booking-${booking.id}`,
+      bookingId: booking.id,
+      propertyTitle: booking.property?.title || "Property Booking",
+      ownerName:
+        booking.property?.owner_name || booking.property?.user?.name || "Owner",
+      amount: calculateBookingTotal(booking),
+      dueDate: booking.approved_at
+        ? new Date(booking.approved_at)
+        : new Date(booking.created_at),
+      paidDate: null,
+      status: "pending",
+      method: null,
+      transactionId: null,
+      isPendingPayment: true,
+    }));
+
+const mapPaymentsToRows = (paymentRows) =>
+  paymentRows.map((payment) => ({
+    id: `payment-${payment.id}`,
+    bookingId: payment.booking_id,
+    propertyTitle:
+      payment.property_name || payment.property?.title || "Property",
+    ownerName: payment.owner_name || payment.owner?.name || "Owner",
+    amount: Number(payment.total_amount || payment.total_payment || 0),
+    dueDate: payment.booking_date
+      ? new Date(payment.booking_date)
+      : new Date(payment.payment_date || Date.now()),
+    paidDate: payment.payment_date ? new Date(payment.payment_date) : null,
+    status:
+      payment.payment_status === "completed" ? "paid" : payment.payment_status,
+    method: payment.payment_method || "sslcommerz",
+    transactionId: payment.transaction_id,
+    isPendingPayment: payment.payment_status !== "completed",
+  }));
+
 const PaymentHistory = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -21,6 +75,7 @@ const PaymentHistory = () => {
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [invoiceError, setInvoiceError] = useState("");
   const [stats, setStats] = useState({
     totalPaid: 0,
     pendingPayments: 0,
@@ -29,63 +84,6 @@ const PaymentHistory = () => {
 
   const paymentBanner = searchParams.get("payment");
   const paymentTransactionId = searchParams.get("transaction_id");
-
-  const calculateBookingTotal = (booking) => {
-    const monthlyRent = Number.parseFloat(
-      String(booking?.property?.price || booking?.property_price || 0).replace(
-        /[^0-9.]/g,
-        "",
-      ),
-    );
-
-    return monthlyRent || 0;
-  };
-
-  const mapBookingsToPendingPayments = (bookingRows, paidBookingIds) =>
-    bookingRows
-      .filter((booking) =>
-        ["approved", "confirmed"].includes(String(booking.status)),
-      )
-      .filter((booking) => !paidBookingIds.has(Number(booking.id)))
-      .map((booking) => ({
-        id: `booking-${booking.id}`,
-        bookingId: booking.id,
-        propertyTitle: booking.property?.title || "Property Booking",
-        ownerName:
-          booking.property?.owner_name ||
-          booking.property?.user?.name ||
-          "Owner",
-        amount: calculateBookingTotal(booking),
-        dueDate: booking.approved_at
-          ? new Date(booking.approved_at)
-          : new Date(booking.created_at),
-        paidDate: null,
-        status: "pending",
-        method: null,
-        transactionId: null,
-        isPendingPayment: true,
-      }));
-
-  const mapPaymentsToRows = (paymentRows) =>
-    paymentRows.map((payment) => ({
-      id: `payment-${payment.id}`,
-      bookingId: payment.booking_id,
-      propertyTitle:
-        payment.property_name || payment.property?.title || "Property",
-      ownerName: payment.owner_name || payment.owner?.name || "Owner",
-      amount: Number(payment.total_amount || payment.total_payment || 0),
-      dueDate: payment.booking_date
-        ? new Date(payment.booking_date)
-        : new Date(payment.payment_date || Date.now()),
-      paidDate: payment.payment_date ? new Date(payment.payment_date) : null,
-      status:
-        payment.payment_status === "completed"
-          ? "paid"
-          : payment.payment_status,
-      method: payment.payment_method || "sslcommerz",
-      transactionId: payment.transaction_id,
-      isPendingPayment: payment.payment_status !== "completed",
-    }));
 
   useEffect(() => {
     const loadPayments = async () => {
@@ -155,7 +153,7 @@ const PaymentHistory = () => {
     };
 
     loadPayments();
-  }, []);
+  }, [user?.id]);
 
   const bannerMessage = useMemo(() => {
     if (paymentBanner === "success") {
@@ -212,43 +210,52 @@ const PaymentHistory = () => {
     navigate(`/dashboard/payments/${bookingId}`);
   };
 
-  const handleDownloadInvoice = async (paymentId) => {
-    setDownloadingId(paymentId);
-    try {
-      const API_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
-      const token = localStorage.getItem("access_token");
+  const downloadInvoice = async (paymentId) => {
+    const normalizedPaymentId = String(paymentId).replace(/^payment-/, "");
 
-      const response = await fetch(
-        `${API_URL}/v1/invoices/${paymentId}/download`,
+    setDownloadingId(paymentId);
+    setInvoiceError("");
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/payments/${normalizedPaymentId}/invoice`,
         {
+          responseType: "blob",
           headers: {
             Authorization: `Bearer ${token}`,
           },
         },
       );
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `invoice_${paymentId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } else if (response.status === 401) {
-        alert("Your session has expired. Please login again.");
-      } else if (response.status === 403) {
-        alert("You don't have permission to download this invoice.");
-      } else {
-        const errorText = await response.text();
-        alert("Failed to download invoice: " + errorText);
-      }
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `invoice-${normalizedPaymentId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error downloading invoice:", err);
-      alert("Error downloading invoice. Please try again.");
+      const status = err?.response?.status;
+      const rawData = err?.response?.data;
+
+      if (status === 401) {
+        setInvoiceError("Your session has expired. Please login again.");
+      } else if (status === 403) {
+        setInvoiceError("You don't have permission to download this invoice.");
+      } else if (rawData instanceof Blob) {
+        try {
+          const errorText = await rawData.text();
+          setInvoiceError(errorText || "Invoice download failed.");
+        } catch {
+          setInvoiceError("Invoice download failed.");
+        }
+      } else {
+        setInvoiceError("Invoice download failed.");
+      }
     } finally {
       setDownloadingId(null);
     }
@@ -268,6 +275,12 @@ const PaymentHistory = () => {
         </div>
       ) : null}
 
+      {invoiceError ? (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {invoiceError}
+        </div>
+      ) : null}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -280,7 +293,7 @@ const PaymentHistory = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-700 text-sm font-medium">Total Paid</p>
@@ -295,7 +308,7 @@ const PaymentHistory = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-amber-700 text-sm font-medium">
@@ -312,7 +325,7 @@ const PaymentHistory = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-700 text-sm font-medium">
@@ -437,25 +450,16 @@ const PaymentHistory = () => {
                         </button>
                       ) : (
                         <button
-                          onClick={() =>
-                            handleDownloadInvoice(
-                              payment.id?.replace("payment-", "") || payment.id,
-                            )
-                          }
-                          disabled={
-                            downloadingId ===
-                            (payment.id?.replace("payment-", "") || payment.id)
-                          }
+                          onClick={() => downloadInvoice(payment.id)}
+                          disabled={downloadingId === payment.id}
                           className={`text-sm font-medium flex items-center gap-1 transition ${
-                            downloadingId ===
-                            (payment.id?.replace("payment-", "") || payment.id)
+                            downloadingId === payment.id
                               ? "text-gray-400 cursor-not-allowed"
                               : "text-blue-600 hover:text-blue-800"
                           }`}
                         >
                           <Download size={14} />
-                          {downloadingId ===
-                          (payment.id?.replace("payment-", "") || payment.id)
+                          {downloadingId === payment.id
                             ? "Downloading..."
                             : "Invoice"}
                         </button>

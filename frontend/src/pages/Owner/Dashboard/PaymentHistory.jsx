@@ -1,19 +1,13 @@
 import {
-  Calendar,
-  CreditCard,
-  Download,
-  DollarSign,
-  Filter,
-  TrendingUp,
   Check,
   Clock,
+  CreditCard,
+  DollarSign,
+  Download,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import useAuth from "../../../hooks/useAuth";
-import {
-  fetchOwnerProperties,
-  fetchPayments,
-} from "../../../utils/notificationService";
 
 const OwnerPaymentHistory = () => {
   const { user } = useAuth();
@@ -25,6 +19,8 @@ const OwnerPaymentHistory = () => {
     totalEarnings: 0,
     adminCommission: 0,
     completedPayments: 0,
+    cancelledCompensation: 0,
+    cancelledBookings: 0,
   });
   const [commissionRates, setCommissionRates] = useState({
     admin: 5,
@@ -39,7 +35,7 @@ const OwnerPaymentHistory = () => {
       setLoading(true);
       try {
         const token = localStorage.getItem("access_token");
-        
+
         // Fetch all payments for admin view, then filter for owner
         const response = await fetch(`${API_URL}/v1/payments?per_page=100`, {
           headers: {
@@ -62,28 +58,39 @@ const OwnerPaymentHistory = () => {
 
             // Filter payments where user is the property owner
             const ownerPayments = (result.data || []).filter(
-              (payment) => payment.property?.user_id === user?.id
+              (payment) => payment.property?.user_id === user?.id,
             );
 
             setPayments(ownerPayments);
 
             // Calculate stats
             const completed = ownerPayments.filter(
-              (p) => p.payment_status === "completed"
+              (p) => p.payment_status === "completed",
+            );
+            const cancelled = ownerPayments.filter(
+              (p) =>
+                p.payment_status === "refunded" ||
+                p.booking_status === "cancelled",
             );
             const totalEarnings = completed.reduce(
               (sum, p) => sum + (Number(p.owner_earning) || 0),
-              0
+              0,
             );
             const adminCommission = completed.reduce(
               (sum, p) => sum + (Number(p.admin_commission) || 0),
-              0
+              0,
+            );
+            const cancelledCompensation = cancelled.reduce(
+              (sum, p) => sum + (Number(p.owner_share) || 0),
+              0,
             );
 
             setStats({
               totalEarnings,
               adminCommission,
               completedPayments: completed.length,
+              cancelledCompensation,
+              cancelledBookings: cancelled.length,
             });
           }
         }
@@ -149,7 +156,7 @@ const OwnerPaymentHistory = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -191,9 +198,9 @@ const OwnerPaymentHistory = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {/* Total Earnings */}
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 p-6">
+        <div className="bg-linear-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-600 text-sm font-medium mb-1">
@@ -211,7 +218,7 @@ const OwnerPaymentHistory = () => {
         </div>
 
         {/* Admin Commission Info */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-6">
+        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-600 text-sm font-medium mb-1">
@@ -227,7 +234,7 @@ const OwnerPaymentHistory = () => {
         </div>
 
         {/* Total Revenue */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6">
+        <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-600 text-sm font-medium mb-1">
@@ -241,6 +248,23 @@ const OwnerPaymentHistory = () => {
               </p>
             </div>
             <CreditCard className="w-12 h-12 text-purple-300" />
+          </div>
+        </div>
+
+        <div className="bg-linear-to-br from-rose-50 to-rose-100 rounded-xl border border-rose-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-rose-600 text-sm font-medium mb-1">
+                Cancellation Compensation
+              </p>
+              <p className="text-3xl font-bold text-rose-700">
+                {formatCurrency(stats.cancelledCompensation)}
+              </p>
+              <p className="text-xs text-rose-600 mt-2">
+                From {stats.cancelledBookings} cancelled bookings
+              </p>
+            </div>
+            <XCircle className="w-12 h-12 text-rose-300" />
           </div>
         </div>
       </div>
@@ -284,9 +308,7 @@ const OwnerPaymentHistory = () => {
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : filteredPayments.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No payments found
-          </div>
+          <div className="p-8 text-center text-gray-500">No payments found</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -347,7 +369,7 @@ const OwnerPaymentHistory = () => {
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                          payment.payment_status
+                          payment.payment_status,
                         )}`}
                       >
                         {payment.payment_status === "completed" && (
@@ -378,12 +400,9 @@ const OwnerPaymentHistory = () => {
                           title="Download Invoice"
                         >
                           <Download size={16} />
-                          {downloadingId === payment.id ? "Downloading..." : "Invoice"}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">N/A</span>
-                      )}
-                    </td>
+                          {downloadingId === payment.id
+                            ? "Downloading..."
+                            : "Invoice"}
                         </button>
                       ) : (
                         <span className="text-xs text-gray-400">N/A</span>
@@ -396,6 +415,8 @@ const OwnerPaymentHistory = () => {
           </div>
         )}
       </div>
+    </div>
+  );
 };
 
 export default OwnerPaymentHistory;

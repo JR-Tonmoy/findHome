@@ -1,4 +1,10 @@
-import { CreditCard, DollarSign, Package, TrendingUp } from "lucide-react";
+import {
+  CreditCard,
+  DollarSign,
+  Package,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import Logo from "../../../components/Logo/Logo";
 import adminService from "../../../utils/adminService";
@@ -11,6 +17,8 @@ const Subscription = () => {
     total_revenue: 0,
     admin_commission: 0,
     owner_earnings: 0,
+    total_cancelled_bookings: 0,
+    cancellation_refund_amount: 0,
   });
   const [commissionRates, setCommissionRates] = useState({
     admin: 5,
@@ -43,6 +51,8 @@ const Subscription = () => {
             revStats.admin_commission || revStats.admin_commission || 0,
           owner_earnings:
             revStats.owner_earnings || revStats.owner_earnings || 0,
+          total_cancelled_bookings: revStats.total_cancelled_bookings || 0,
+          cancellation_refund_amount: revStats.cancellation_refund_amount || 0,
         });
 
         const adminRate = Number(revStats.admin_commission_rate ?? 5);
@@ -156,7 +166,7 @@ const Subscription = () => {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
           {/* Total Booked Houses */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
@@ -239,6 +249,36 @@ const Subscription = () => {
             <p className="text-xs text-gray-400 mt-1">
               {commissionRates.owner}% distributed
             </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-rose-100 text-rose-600 w-12 h-12 rounded-lg flex items-center justify-center">
+                <XCircle size={24} />
+              </div>
+              <span className="text-2xl font-bold text-rose-600">
+                {stats.total_cancelled_bookings}
+              </span>
+            </div>
+            <h3 className="text-gray-600 text-sm font-medium">
+              Cancelled Bookings
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">Refunds processed</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-sky-100 text-sky-600 w-12 h-12 rounded-lg flex items-center justify-center">
+                <DollarSign size={24} />
+              </div>
+              <span className="text-xl font-bold text-sky-600">
+                {formatCurrency(stats.cancellation_refund_amount)}
+              </span>
+            </div>
+            <h3 className="text-gray-600 text-sm font-medium">
+              Tenant Refunds
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">90% refund total</p>
           </div>
         </div>
 
