@@ -1,20 +1,23 @@
 import { AlertCircle, Bell, Calendar, CreditCard, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
-import { fetchNotifications } from "../../../utils/notificationService";
+import adminService from "../../../utils/adminService";
 
 const AdminNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadNotifications = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetchNotifications();
-        setNotifications(response?.data || []);
+        const response = await adminService.fetchAdminNotifications();
+        setNotifications(Array.isArray(response) ? response : []);
       } catch (err) {
         console.error("Failed to load notifications:", err);
+        setError("Failed to load admin notifications.");
       } finally {
         setIsLoading(false);
       }
@@ -40,8 +43,18 @@ const AdminNotifications = () => {
         return <Calendar className="text-green-600" size={20} />;
       case "booking_rejected":
         return <AlertCircle className="text-red-600" size={20} />;
+      case "booking_cancelled":
+        return <AlertCircle className="text-orange-600" size={20} />;
       case "payment_completed":
         return <CreditCard className="text-emerald-600" size={20} />;
+      case "refund_processed":
+        return <CreditCard className="text-violet-600" size={20} />;
+      case "owner_request":
+        return <Mail className="text-amber-600" size={20} />;
+      case "tenant_report":
+        return <Mail className="text-cyan-600" size={20} />;
+      case "system_alert":
+        return <AlertCircle className="text-amber-600" size={20} />;
       default:
         return <Bell className="text-gray-600" size={20} />;
     }
@@ -55,8 +68,18 @@ const AdminNotifications = () => {
         return "bg-green-100 text-green-800";
       case "booking_rejected":
         return "bg-red-100 text-red-800";
+      case "booking_cancelled":
+        return "bg-orange-100 text-orange-800";
       case "payment_completed":
         return "bg-emerald-100 text-emerald-800";
+      case "refund_processed":
+        return "bg-violet-100 text-violet-800";
+      case "owner_request":
+        return "bg-amber-100 text-amber-800";
+      case "tenant_report":
+        return "bg-cyan-100 text-cyan-800";
+      case "system_alert":
+        return "bg-amber-100 text-amber-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -100,6 +123,12 @@ const AdminNotifications = () => {
           Monitor platform activities and important events
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
         <div className="flex gap-2 flex-wrap">

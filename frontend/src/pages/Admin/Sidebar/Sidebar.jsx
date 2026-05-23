@@ -43,30 +43,42 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
   const adminMenus = [
     {
       label: "Dashboard",
-      path: "/admin/dashboard",
+      path: "/admin-dashboard/dashboard",
       icon: <LayoutDashboard size={20} />,
     },
     {
       label: "Notifications",
-      path: "/admin/notifications",
+      path: "/admin-dashboard/notifications",
       icon: <Bell size={20} />,
     },
-    { label: "Users", path: "/admin/users", icon: <Users size={20} /> },
-    { label: "Owners", path: "/admin/owners", icon: <UserRound size={20} /> },
+    {
+      label: "Users",
+      path: "/admin-dashboard/users",
+      icon: <Users size={20} />,
+    },
+    {
+      label: "Owners",
+      path: "/admin-dashboard/owners",
+      icon: <UserRound size={20} />,
+    },
     {
       label: "Properties",
-      path: "/admin/properties",
+      path: "/admin-dashboard/properties",
       icon: <Home size={20} />,
     },
-    { label: "Bookings", path: "/admin/bookings", icon: <Book size={20} /> },
+    {
+      label: "Bookings",
+      path: "/admin-dashboard/bookings",
+      icon: <Book size={20} />,
+    },
     {
       label: "Revenue Analytics",
-      path: "/admin/revenue",
+      path: "/admin-dashboard/revenue",
       icon: <TrendingUp size={20} />,
     },
     {
       label: "Payments",
-      path: "/admin/payments",
+      path: "/admin-dashboard/payments",
       icon: <DollarSign size={20} />,
     },
   ];
@@ -128,7 +140,7 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
                   Admin
                 </div>
                 <Link
-                  to="/admin/profile"
+                  to="/admin-dashboard/profile"
                   className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
                   <CircleUserRound size={14} />

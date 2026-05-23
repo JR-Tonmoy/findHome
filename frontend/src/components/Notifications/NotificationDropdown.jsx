@@ -1,6 +1,7 @@
 import { Bell, CheckCheck, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 import {
   deleteNotification,
   fetchNotifications,
@@ -13,6 +14,12 @@ const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin =
+    String(
+      user?.role || localStorage.getItem("userRole") || "",
+    ).toLowerCase() === "admin";
 
   // Fetch notifications
   const loadNotifications = async () => {
@@ -85,7 +92,14 @@ const NotificationDropdown = () => {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isAdmin) {
+            navigate("/admin-dashboard/notifications");
+            return;
+          }
+
+          setIsOpen(!isOpen);
+        }}
         className="relative p-2 text-gray-600 hover:text-black transition"
         title="Notifications"
       >
@@ -130,7 +144,7 @@ const NotificationDropdown = () => {
                   }`}
                 >
                   <div className="flex gap-3">
-                    <span className="text-2xl flex-shrink-0">
+                    <span className="text-2xl shrink-0">
                       {getNotificationIcon(notification.type)}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -147,7 +161,7 @@ const NotificationDropdown = () => {
                     {!notification.is_read && (
                       <button
                         onClick={() => handleMarkAsRead(notification.id)}
-                        className="ml-2 text-blue-600 hover:text-blue-700 flex-shrink-0"
+                        className="ml-2 text-blue-600 hover:text-blue-700 shrink-0"
                         title="Mark as read"
                       >
                         <CheckCheck size={16} />
@@ -155,7 +169,7 @@ const NotificationDropdown = () => {
                     )}
                     <button
                       onClick={() => handleDelete(notification.id)}
-                      className="ml-2 text-gray-400 hover:text-red-600 flex-shrink-0"
+                      className="ml-2 text-gray-400 hover:text-red-600 shrink-0"
                       title="Delete"
                     >
                       <X size={16} />
@@ -170,7 +184,11 @@ const NotificationDropdown = () => {
           {notifications.length > 0 && (
             <div className="p-4 border-t border-gray-100 bg-gray-50">
               <Link
-                to="/dashboard/notifications"
+                to={
+                  isAdmin
+                    ? "/admin-dashboard/notifications"
+                    : "/dashboard/notifications"
+                }
                 className="text-center block text-sm font-medium text-blue-600 hover:text-blue-700"
               >
                 View All Notifications

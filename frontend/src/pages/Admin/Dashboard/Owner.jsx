@@ -62,6 +62,12 @@ const Owner = () => {
         </div>
       </div>
 
+      {loading && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
+          Loading owners from the backend...
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden">
         <div className="p-4 flex justify-between items-center bg-white border-b border-gray-100">
           <div className="relative w-[320px]">

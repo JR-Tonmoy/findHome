@@ -510,6 +510,7 @@ const AddProperty = () => {
                 <option value="" disabled>
                   Select an option
                 </option>
+                <option>0</option>
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>
@@ -529,6 +530,7 @@ const AddProperty = () => {
                 <option value="" disabled>
                   Select an option
                 </option>
+                <option>0</option>
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>

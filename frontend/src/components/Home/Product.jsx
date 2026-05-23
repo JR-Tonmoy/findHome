@@ -2,7 +2,6 @@ import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentMemberProfile } from "../../utils/memberStorage";
-import { getPublicProperties } from "../../utils/publicPropertyFeed";
 import {
   isPropertySaved,
   toggleSavedProperty,
@@ -10,49 +9,28 @@ import {
 
 const ITEMS_PER_PAGE = 8;
 
-const Product = ({ selectedCategory = "All" }) => {
+const placeholderImage = "/placeholder-property.jpg";
+
+const Product = ({
+  title = "Featured Properties",
+  subtitle = "Browse verified listings with quick filters and pagination.",
+  properties = [],
+  loading = false,
+}) => {
   const navigate = useNavigate();
   const currentMember = getCurrentMemberProfile();
   const savedStorageKey = currentMember.email;
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [, setSavedRefreshTick] = useState(0);
 
   useEffect(() => {
-    let isActive = true;
-
-    const loadProperties = async () => {
-      setLoading(true);
-
-      try {
-        const allProperties = await getPublicProperties();
-
-        if (isActive) {
-          setProperties(allProperties);
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
-      }
-    };
-
     const refreshSavedState = () => {
       setSavedRefreshTick((currentValue) => currentValue + 1);
     };
 
-    loadProperties();
-    window.addEventListener("storage", loadProperties);
-    window.addEventListener("owner-properties-updated", loadProperties);
-    window.addEventListener("public-properties-updated", loadProperties);
     window.addEventListener("saved-properties-updated", refreshSavedState);
 
     return () => {
-      isActive = false;
-      window.removeEventListener("storage", loadProperties);
-      window.removeEventListener("owner-properties-updated", loadProperties);
-      window.removeEventListener("public-properties-updated", loadProperties);
       window.removeEventListener("saved-properties-updated", refreshSavedState);
     };
   }, []);
@@ -68,11 +46,7 @@ const Product = ({ selectedCategory = "All" }) => {
   const params = new URLSearchParams(location.search);
   const divisionFilter = params.get("division") || null;
 
-  // Filter properties based on selected category, then slice to show max 10
-  let filteredProperties =
-    selectedCategory === "All"
-      ? properties
-      : properties.filter((property) => property.category === selectedCategory);
+  let filteredProperties = properties;
 
   // If division filter is present, include properties matching by `division`,
   // or where the `location`/area/district contains the division string.
@@ -114,17 +88,8 @@ const Product = ({ selectedCategory = "All" }) => {
     Math.ceil(filteredProperties.length / ITEMS_PER_PAGE),
   );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, divisionFilter, searchQuery]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
   const displayedProperties = filteredProperties.slice(
     startIndex,
     startIndex + ITEMS_PER_PAGE,
@@ -146,10 +111,10 @@ const Product = ({ selectedCategory = "All" }) => {
       <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-black text-center md:text-left">
-            Featured Properties
+            {title}
           </h2>
           <p className="mt-1 text-sm text-gray-500 text-center md:text-left">
-            Browse verified listings with quick filters and pagination.
+            {subtitle}
           </p>
         </div>
         <p className="text-center md:text-right text-sm text-gray-500">
@@ -172,11 +137,11 @@ const Product = ({ selectedCategory = "All" }) => {
               {/* <Featured Properties image edit/> */}
               <div className="w-full aspect-4/3 bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
                 <img
-                  src={property.image}
+                  src={property.image || placeholderImage}
                   alt={property.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = "https://placehold.co/400x300?text=No+Image";
+                    e.currentTarget.src = placeholderImage;
                   }}
                 />
               </div>
@@ -187,6 +152,17 @@ const Product = ({ selectedCategory = "All" }) => {
                 <p className="text-gray-600 text-xs md:text-sm mt-1 flex items-center gap-1 line-clamp-1 min-h-5">
                   📍 {property.location}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1">
+                    {property.category || "Uncategorized"}
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1">
+                    {property.type || "Property"}
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1">
+                    {String(property.status || "available")}
+                  </span>
+                </div>
 
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <div>
@@ -238,6 +214,28 @@ const Product = ({ selectedCategory = "All" }) => {
                   </span>
                 </div>
 
+                <div className="mb-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                  <p className="font-semibold text-gray-800">
+                    Owner: {property.owner?.name || "Property Owner"}
+                  </p>
+                  <p className="mt-1">
+                    Availability:{" "}
+                    {property.isOccupied ||
+                    [
+                      "booked",
+                      "occupied",
+                      "currently_occupied",
+                      "rented",
+                    ].includes(
+                      String(property.status || "")
+                        .toLowerCase()
+                        .trim(),
+                    )
+                      ? "Currently Occupied"
+                      : property.status || "available"}
+                  </p>
+                </div>
+
                 <button
                   onClick={(e) => handleViewDetails(e, property.id)}
                   className="mt-auto block w-full text-center bg-black text-white font-semibold py-2 rounded-lg hover:bg-gray-800 transition cursor-pointer text-sm"
@@ -262,7 +260,7 @@ const Product = ({ selectedCategory = "All" }) => {
             <button
               type="button"
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              disabled={currentPage === 1}
+              disabled={safeCurrentPage === 1}
               className="rounded-lg border border-black px-4 py-2 text-sm font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-black hover:text-white"
             >
               Previous
@@ -270,8 +268,8 @@ const Product = ({ selectedCategory = "All" }) => {
 
             {Array.from({ length: totalPages }, (_, index) => index + 1)
               .slice(
-                Math.max(0, currentPage - 3),
-                Math.min(totalPages, currentPage + 2),
+                Math.max(0, safeCurrentPage - 3),
+                Math.min(totalPages, safeCurrentPage + 2),
               )
               .map((pageNumber) => (
                 <button
@@ -279,7 +277,7 @@ const Product = ({ selectedCategory = "All" }) => {
                   type="button"
                   onClick={() => setCurrentPage(pageNumber)}
                   className={`min-w-10 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                    currentPage === pageNumber
+                    safeCurrentPage === pageNumber
                       ? "bg-black text-white"
                       : "border border-gray-300 text-black hover:border-black hover:bg-gray-50"
                   }`}
@@ -293,7 +291,7 @@ const Product = ({ selectedCategory = "All" }) => {
               onClick={() =>
                 setCurrentPage((page) => Math.min(totalPages, page + 1))
               }
-              disabled={currentPage === totalPages}
+              disabled={safeCurrentPage === totalPages}
               className="rounded-lg border border-black px-4 py-2 text-sm font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-black hover:text-white"
             >
               Next
@@ -301,7 +299,7 @@ const Product = ({ selectedCategory = "All" }) => {
           </div>
 
           <p className="text-sm text-gray-500">
-            Page {currentPage} of {totalPages}
+            Page {safeCurrentPage} of {totalPages}
           </p>
         </div>
       )}

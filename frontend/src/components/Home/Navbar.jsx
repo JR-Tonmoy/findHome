@@ -29,7 +29,7 @@ const Navbar = () => {
   const profileAvatar = getAvatarUrl(user);
 
   const profileRoute = isAdmin
-    ? "/admin/profile"
+    ? "/admin-dashboard/profile"
     : isOwner
       ? "/owner-dashboard/profile"
       : "/dashboard/profile";

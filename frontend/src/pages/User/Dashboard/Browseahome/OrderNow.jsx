@@ -106,6 +106,15 @@ const OrderNow = () => {
     };
   }, [id]);
 
+  const isOccupied = Boolean(
+    property?.isOccupied ||
+    ["booked", "occupied", "currently_occupied", "rented"].includes(
+      String(property?.status || property?.raw?.status || "")
+        .toLowerCase()
+        .trim(),
+    ),
+  );
+
   if (loading) {
     return (
       <div className="bg-gray-50 min-h-screen">
@@ -132,6 +141,56 @@ const OrderNow = () => {
           >
             Back to Browse
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOccupied) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center mb-8 sticky top-0 z-50">
+          <Logo
+            variant="default"
+            size="sm"
+            showSubtitle={true}
+            linkTo="/dashboard/browse"
+          />
+          <Link
+            to={`/property/${property.id}`}
+            className="flex items-center text-gray-500 hover:text-blue-600 font-medium"
+          >
+            <ArrowLeft size={18} className="mr-2" /> Back to Property
+          </Link>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-4 pb-10">
+          <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+            <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-700">
+              Currently Occupied
+            </span>
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">
+              This property is already booked.
+            </h1>
+            <p className="mt-2 text-gray-600">
+              Booking and payment access are disabled until the property becomes
+              available again.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Link
+                to="/dashboard/browse"
+                className="inline-flex items-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                Back to Browse
+              </Link>
+              <Link
+                to={`/property/${property.id}`}
+                className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                View Details
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -427,28 +486,11 @@ const OrderNow = () => {
 
                 <button
                   type="submit"
-                  disabled={
-                    submitting ||
-                    (property &&
-                      String(
-                        property.status || property.raw?.status || "available",
-                      )
-                        .toLowerCase()
-                        .includes("available") === false)
-                  }
+                  disabled={submitting}
                   className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors text-lg mt-8 shadow-sm"
                 >
                   {submitting ? "Sending..." : "Confirm Booking Request"}
                 </button>
-                {property &&
-                !String(property.status || property.raw?.status || "available")
-                  .toLowerCase()
-                  .includes("available") ? (
-                  <p className="mt-3 text-sm font-medium text-red-600">
-                    ✗ This property is currently occupied and not available for
-                    booking.
-                  </p>
-                ) : null}
                 {statusMessage ? (
                   <p className="mt-3 text-sm font-medium text-green-600">
                     ✓ {statusMessage}

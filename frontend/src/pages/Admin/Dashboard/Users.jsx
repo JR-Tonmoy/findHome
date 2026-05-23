@@ -1,8 +1,9 @@
 import {
   Filter,
   Mail,
-  Plus,
   Search,
+  ShieldCheck,
+  ShieldOff,
   Trash2,
   Users as UsersIcon,
 } from "lucide-react";
@@ -13,12 +14,14 @@ import { normalizeMemberRecord } from "../../../utils/memberStorage";
 const Users = () => {
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let active = true;
 
     const loadUsers = async () => {
       setLoading(true);
+      setError(null);
       try {
         const users = await adminService.fetchAdminUsers();
         if (!active) return;
@@ -27,6 +30,7 @@ const Users = () => {
         );
       } catch (err) {
         console.error("Failed to load users:", err);
+        setError("Failed to load users from the backend.");
       } finally {
         if (active) setLoading(false);
       }
@@ -44,7 +48,6 @@ const Users = () => {
     const updatedUsers = registeredUsers.filter((_, i) => i !== index);
     setRegisteredUsers(updatedUsers);
 
-    // Try to delete on the backend, if available. If it fails, keep local change.
     try {
       if (user?.id) {
         await adminService.deleteAdminUser(user.id);
@@ -53,6 +56,32 @@ const Users = () => {
       }
     } catch (err) {
       console.warn("Failed to delete user on backend:", err);
+    }
+  };
+
+  const handleBlockUser = async (userId) => {
+    try {
+      const updatedUser = await adminService.blockAdminUser(userId);
+      setRegisteredUsers((current) =>
+        current.map((user) =>
+          user.id === userId ? { ...user, ...updatedUser } : user,
+        ),
+      );
+    } catch (err) {
+      alert(err?.message || "Failed to block user");
+    }
+  };
+
+  const handleActivateUser = async (userId) => {
+    try {
+      const updatedUser = await adminService.activateAdminUser(userId);
+      setRegisteredUsers((current) =>
+        current.map((user) =>
+          user.id === userId ? { ...user, ...updatedUser } : user,
+        ),
+      );
+    } catch (err) {
+      alert(err?.message || "Failed to activate user");
     }
   };
 
@@ -120,6 +149,12 @@ const Users = () => {
           />
         </div>
       </div> 
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       */}
 
       {/* Breadcrumb & Add User Action */}
@@ -129,10 +164,19 @@ const Users = () => {
           <span className="text-gray-300">›</span>{" "}
           <span className="text-gray-800 font-medium">Users</span>
         </div>
-        <button className="flex items-center justify-center gap-2 bg-linear-to-r from-[#9d4edd] to-[#6366f1] text-white px-5 py-2 rounded-xl shadow-sm hover:shadow-md transition font-medium text-sm w-auto">
-          <Plus size={16} /> Add User
-        </button>
       </div>
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600">
+          Loading users from the backend...
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 w-full max-w-4xl">
@@ -238,14 +282,37 @@ const Users = () => {
                       {user.date}
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleRemoveUser(index)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium"
-                        title="Remove user"
-                      >
-                        <Trash2 size={14} />
-                        Remove
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        {String(
+                          user.account_status || "active",
+                        ).toLowerCase() === "blocked" ? (
+                          <button
+                            onClick={() => handleActivateUser(user.id)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition text-sm font-medium"
+                            title="Activate user"
+                          >
+                            <ShieldCheck size={14} />
+                            Activate
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleBlockUser(user.id)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition text-sm font-medium"
+                            title="Block user"
+                          >
+                            <ShieldOff size={14} />
+                            Block
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveUser(index)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium"
+                          title="Remove user"
+                        >
+                          <Trash2 size={14} />
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

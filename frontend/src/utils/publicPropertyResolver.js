@@ -75,6 +75,13 @@ const normalizePublicProperty = (property = {}) => {
     available_from_month:
       property.available_from_month || property.raw?.available_from_month || "",
     month: property.month || "",
+    isOccupied:
+      Boolean(property.isOccupied) ||
+      ["booked", "occupied", "currently_occupied", "rented"].includes(
+        String(property.status || property.raw?.status || "")
+          .toLowerCase()
+          .trim(),
+      ),
   };
 };
 
@@ -85,7 +92,7 @@ const resolvePublicPropertyById = async (propertyId) => {
   try {
     const backendProp = await fetchPropertyById(normalizedId);
     if (backendProp) return normalizePublicProperty(backendProp);
-  } catch (err) {
+  } catch {
     // ignore and fall back to local/public feed
   }
 

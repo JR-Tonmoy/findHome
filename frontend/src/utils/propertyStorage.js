@@ -245,6 +245,12 @@ const normalizePropertyRecord = (property = {}) => {
     rawStatus === "currently_occupied" || rawStatus === "occupied"
       ? "rented"
       : rawStatus || "active";
+  const isOccupied = [
+    "booked",
+    "occupied",
+    "currently_occupied",
+    "rented",
+  ].includes(normalizedStatus);
 
   return {
     id: property.id ? String(property.id) : makePropertyId(),
@@ -275,6 +281,7 @@ const normalizePropertyRecord = (property = {}) => {
       property.image ||
       resolvedImages[0] ||
       "https://placehold.co/400x300?text=No+Image",
+    isOccupied,
     owner: property.owner || {
       name: "Property Owner",
       phone: "N/A",

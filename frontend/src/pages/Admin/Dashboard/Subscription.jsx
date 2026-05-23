@@ -142,7 +142,7 @@ const Subscription = () => {
           variant="default"
           size="sm"
           showSubtitle={true}
-          linkTo="/admin/dashboard"
+          linkTo="/admin-dashboard"
         />
         <h2 className="text-2xl font-bold text-gray-900">Earn Money</h2>
       </div>

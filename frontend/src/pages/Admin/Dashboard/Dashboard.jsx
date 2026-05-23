@@ -48,220 +48,76 @@ const Dashboard = () => {
       setLoading(true);
 
       try {
-        // Fetch all required data in parallel
-        const [users, owners, properties, bookings, payments, stats, revenue] =
-          await Promise.all([
-            adminService.fetchAdminUsers(),
-            adminService.fetchAdminOwners(),
-            adminService.fetchAdminProperties(),
-            adminService.fetchAdminBookings(),
-            adminService.fetchPaymentsAdmin(),
-            adminService.fetchDashboardStats(),
-            adminService.fetchRevenueStats(),
-          ]);
+        const [dashboard, revenue] = await Promise.all([
+          adminService.fetchAdminDashboard(),
+          adminService.fetchRevenueStats(),
+        ]);
 
         if (!active) return;
 
-        // Calculate stats
-        const totalUsers = Array.isArray(users) ? users.length : 0;
-        const totalOwners = Array.isArray(owners) ? owners.length : 0;
-        const totalProperties = Array.isArray(properties)
-          ? properties.length
-          : 0;
-        const totalBookings = Array.isArray(bookings) ? bookings.length : 0;
-        const totalPayments = Array.isArray(payments) ? payments.length : 0;
+        const statsData = dashboard?.stats || {};
+        const notificationsArray = Array.isArray(dashboard?.notifications)
+          ? dashboard.notifications
+          : [];
 
         const adminRate = Number(revenue?.admin_commission_rate ?? 5);
         const ownerRate = Number(
           revenue?.owner_earning_rate ?? 100 - adminRate,
         );
-
-        // Calculate revenue and commission
-        const totalRevenue = Number(
-          revenue?.total_revenue ??
-            (Array.isArray(payments)
-              ? payments.reduce(
-                  (sum, p) => sum + Number(p.total_payment || p.amount || 0),
-                  0,
-                )
-              : 0),
-        );
+        const totalRevenue = Number(revenue?.total_revenue ?? 0);
         const adminCommission = Number(
-          revenue?.admin_commission ?? (totalRevenue * adminRate) / 100,
+          revenue?.admin_commission ?? statsData.admin_earnings ?? 0,
         );
         const completedPayments = Number(
-          revenue?.total_completed_payments ??
-            (Array.isArray(payments)
-              ? payments.filter(
-                  (p) =>
-                    p.payment_status === "paid" ||
-                    p.status === "completed" ||
-                    p.paid === true,
-                ).length
-              : 0),
+          revenue?.total_completed_payments ?? statsData.total_payments ?? 0,
         );
 
-        setCommissionRates({
-          admin: adminRate,
-          owner: ownerRate,
-        });
-
+        setCommissionRates({ admin: adminRate, owner: ownerRate });
         setStats({
-          totalUsers,
-          totalOwners,
-          totalProperties,
-          totalBookings,
-          totalPayments,
+          totalUsers: Number(statsData.total_users ?? 0),
+          totalOwners: Number(statsData.total_owners ?? 0),
+          totalProperties: Number(statsData.total_properties ?? 0),
+          totalBookings: Number(statsData.total_bookings ?? 0),
+          totalPayments: Number(statsData.total_payments ?? 0),
           totalRevenue: Math.round(totalRevenue),
           adminCommission: Math.round(adminCommission),
           completedPayments,
         });
 
-        // Build revenue data
-        const ownerEarnings = Number(
-          revenue?.owner_earnings ?? totalRevenue - adminCommission,
-        );
         setRevenueData({
           totalAdminEarnings: Math.round(adminCommission),
-          totalOwnerEarnings: Math.round(ownerEarnings),
+          totalOwnerEarnings: Math.round(totalRevenue - adminCommission),
           completedPayments,
         });
 
-        // Build recent activity from multiple sources
-        const activities = [];
+        const recentActivity = notificationsArray
+          .slice(0, 6)
+          .map((notification) => ({
+            id: notification.id,
+            type: notification.type || "system",
+            title: notification.title,
+            message: notification.message,
+            timestamp: notification.created_at || notification.createdAt,
+          }));
 
-        // Add recent bookings
-        if (Array.isArray(bookings) && bookings.length > 0) {
-          bookings.slice(0, 3).forEach((booking) => {
-            activities.push({
-              id: `booking-${booking.id}`,
-              type: "booking",
-              title: "New Booking Request",
-              message: `${booking.tenant_name || "A tenant"} booked ${booking.property_title || "a property"}`,
-              timestamp:
-                booking.created_at ||
-                booking.createdAt ||
-                new Date().toISOString(),
-            });
-          });
-        }
-
-        // Add recent payments
-        if (Array.isArray(payments) && payments.length > 0) {
-          payments.slice(0, 3).forEach((payment) => {
-            activities.push({
-              id: `payment-${payment.id}`,
-              type: "payment",
-              title: "Payment Received",
-              message: `Payment of $${Number(payment.total_payment || payment.amount || 0).toFixed(2)} received`,
-              timestamp:
-                payment.created_at ||
-                payment.createdAt ||
-                payment.booking_date ||
-                new Date().toISOString(),
-            });
-          });
-        }
-
-        // Add recent users
-        if (Array.isArray(users) && users.length > 0) {
-          users.slice(0, 2).forEach((user) => {
-            activities.push({
-              id: `user-${user.id}`,
-              type: "user",
-              title: "New User Registered",
-              message: `${user.name || user.email} joined the platform`,
-              timestamp:
-                user.created_at || user.createdAt || new Date().toISOString(),
-            });
-          });
-        }
-
-        // Add recent properties
-        if (Array.isArray(properties) && properties.length > 0) {
-          properties.slice(0, 2).forEach((property) => {
-            activities.push({
-              id: `property-${property.id}`,
-              type: "property",
-              title: "New Property Listed",
-              message: `${property.title || "A property"} was added by ${property.owner?.name || "an owner"}`,
-              timestamp:
-                property.created_at ||
-                property.createdAt ||
-                new Date().toISOString(),
-            });
-          });
-        }
-
-        // Sort by timestamp (newest first) and take top 6
-        const sortedActivities = activities
-          .sort(
-            (a, b) =>
-              new Date(b.timestamp || 0).getTime() -
-              new Date(a.timestamp || 0).getTime(),
-          )
-          .slice(0, 6);
-
-        setRecentActivity(sortedActivities);
-
-        // Create notifications from activities
-        const notificationsArray = sortedActivities.map((activity) => ({
-          id: activity.id,
-          type: activity.type,
-          title: activity.title,
-          message: activity.message,
-          createdAt: activity.timestamp,
-        }));
-
-        seedAdminNotifications(notificationsArray);
+        setRecentActivity(recentActivity);
         setNotifications(notificationsArray);
+        seedAdminNotifications(notificationsArray);
       } catch (err) {
         console.error("Error loading dashboard data:", err);
-        // Fallback to localStorage if backend fails
         if (active) {
-          const registeredUsers = JSON.parse(
-            localStorage.getItem("registeredUsers") || "[]",
-          );
-          const registeredOwners = JSON.parse(
-            localStorage.getItem("registeredOwners") || "[]",
-          );
-          const ownerProperties = JSON.parse(
-            localStorage.getItem("ownerProperties") || "[]",
-          );
-          const bookingRequests = JSON.parse(
-            localStorage.getItem("tenantBookingRequests") || "[]",
-          );
-
           setStats({
-            totalUsers: registeredUsers.length,
-            totalOwners: registeredOwners.length,
-            totalProperties: ownerProperties.length,
-            totalBookings: bookingRequests.length,
+            totalUsers: 0,
+            totalOwners: 0,
+            totalProperties: 0,
+            totalBookings: 0,
             totalPayments: 0,
             totalRevenue: 0,
             adminCommission: 0,
             completedPayments: 0,
           });
-
-          const fallbackActivities = [
-            ...ownerProperties.map((prop) => ({
-              id: `property-${prop.id}`,
-              type: "property",
-              title: "New Property Listed",
-              message: `${prop.title} was added`,
-              timestamp: prop.createdAt || new Date().toISOString(),
-            })),
-            ...bookingRequests.map((booking) => ({
-              id: `booking-${booking.id}`,
-              type: "booking",
-              title: "New Booking Request",
-              message: `${booking.tenantName} requested ${booking.propertyTitle}`,
-              timestamp: booking.createdAt || new Date().toISOString(),
-            })),
-          ];
-
-          setRecentActivity(fallbackActivities.slice(0, 6));
-          setNotifications(fallbackActivities);
+          setRecentActivity([]);
+          setNotifications([]);
         }
       } finally {
         if (active) setLoading(false);
@@ -299,7 +155,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users Card */}
         <div
-          onClick={() => navigate("/admin/users")}
+          onClick={() => navigate("/admin-dashboard/users")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-blue-200"
         >
           <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -317,7 +173,7 @@ const Dashboard = () => {
 
         {/* Total Owners Card */}
         <div
-          onClick={() => navigate("/admin/owners")}
+          onClick={() => navigate("/admin-dashboard/owners")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-green-200"
         >
           <div className="bg-green-100 text-green-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -335,7 +191,7 @@ const Dashboard = () => {
 
         {/* Total Properties Card */}
         <div
-          onClick={() => navigate("/admin/properties")}
+          onClick={() => navigate("/admin-dashboard/properties")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-purple-200"
         >
           <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -353,7 +209,7 @@ const Dashboard = () => {
 
         {/* Total Bookings Card */}
         <div
-          onClick={() => navigate("/admin/bookings")}
+          onClick={() => navigate("/admin-dashboard/bookings")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-yellow-200"
         >
           <div className="bg-yellow-100 text-yellow-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -374,7 +230,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Payments Card */}
         <div
-          onClick={() => navigate("/admin/payments")}
+          onClick={() => navigate("/admin-dashboard/payments")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-indigo-200"
         >
           <div className="bg-indigo-100 text-indigo-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -392,7 +248,7 @@ const Dashboard = () => {
 
         {/* Total Revenue Card */}
         <div
-          onClick={() => navigate("/admin/subscription")}
+          onClick={() => navigate("/admin-dashboard/subscription")}
           className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-emerald-200"
         >
           <div className="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
@@ -612,7 +468,7 @@ const Dashboard = () => {
             {/* Action Button */}
             <button
               onClick={() => navigate("/admin/subscription")}
-              className="w-full mt-6 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
+              className="w-full mt-6 bg-linear-to-r from-emerald-500 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300"
             >
               View Full Analytics
             </button>

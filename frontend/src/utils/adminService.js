@@ -2,7 +2,7 @@ import http from "./http";
 
 const API_BASE_URL =
   import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
-const ADMIN_API_URL = API_BASE_URL ? `/api/v1/admin` : "";
+const ADMIN_API_URL = API_BASE_URL ? `/api/admin` : "";
 const PUBLIC_API_URL = API_BASE_URL ? `/api/v1` : "";
 
 export const fetchAdminUsers = async () => {
@@ -37,8 +37,11 @@ export const fetchAdminOwners = async () => {
   }
 
   try {
-    const res = await http.get(`${ADMIN_API_URL}/owners`);
-    return res?.data?.data || res?.data || [];
+    const res = await http.get(`${ADMIN_API_URL}/users`);
+    const payload = res?.data?.data || res?.data || [];
+    return Array.isArray(payload)
+      ? payload.filter((user) => String(user.role).toLowerCase() === "owner")
+      : [];
   } catch (err) {
     console.warn("fetchAdminOwners failed, falling back to localStorage", err);
     try {
@@ -65,7 +68,7 @@ export const deleteAdminOwner = async (id) => {
   if (!API_BASE_URL) return null;
 
   try {
-    await http.delete(`${ADMIN_API_URL}/owners/${encodeURIComponent(id)}`);
+    await http.delete(`${ADMIN_API_URL}/users/${encodeURIComponent(id)}`);
     return true;
   } catch (err) {
     console.warn("deleteAdminOwner failed", err);
@@ -134,7 +137,6 @@ export const fetchAdminCancelledBookings = async () => {
 };
 
 export const fetchDashboardStats = async () => {
-  // Prefer admin stats endpoint, otherwise compute from local cache
   if (!API_BASE_URL) {
     const registeredUsers = JSON.parse(
       localStorage.getItem("registeredUsers") || "[]",
@@ -154,8 +156,8 @@ export const fetchDashboardStats = async () => {
   }
 
   try {
-    const res = await http.get(`${ADMIN_API_URL}/stats`);
-    return res?.data?.data || res?.data || {};
+    const res = await http.get(`${ADMIN_API_URL}/dashboard`);
+    return res?.data?.data?.stats || res?.data?.data || {};
   } catch (err) {
     console.warn(
       "fetchDashboardStats failed, falling back to local counts",
@@ -235,6 +237,83 @@ export const fetchAdminProperties = async () => {
     } catch {
       return [];
     }
+  }
+};
+
+export const fetchAdminDashboard = async () => {
+  if (!API_BASE_URL) {
+    const stats = await fetchDashboardStats();
+    return { stats, notifications: [] };
+  }
+
+  try {
+    const res = await http.get(`${ADMIN_API_URL}/dashboard`);
+    return res?.data?.data || { stats: {}, notifications: [] };
+  } catch (err) {
+    console.warn("fetchAdminDashboard failed", err);
+    return { stats: {}, notifications: [] };
+  }
+};
+
+export const fetchAdminNotifications = async () => {
+  if (!API_BASE_URL) return [];
+
+  try {
+    const res = await http.get(`${ADMIN_API_URL}/notifications`);
+    return res?.data?.data || [];
+  } catch (err) {
+    console.warn("fetchAdminNotifications failed", err);
+    return [];
+  }
+};
+
+export const approveAdminProperty = async (propertyId) => {
+  if (!API_BASE_URL) return null;
+
+  try {
+    const res = await http.put(
+      `${ADMIN_API_URL}/properties/${propertyId}/approve`,
+    );
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("approveAdminProperty failed", err);
+    throw err;
+  }
+};
+
+export const deleteAdminProperty = async (propertyId) => {
+  if (!API_BASE_URL) return null;
+
+  try {
+    const res = await http.delete(`${ADMIN_API_URL}/properties/${propertyId}`);
+    return res?.data || null;
+  } catch (err) {
+    console.warn("deleteAdminProperty failed", err);
+    throw err;
+  }
+};
+
+export const blockAdminUser = async (userId) => {
+  if (!API_BASE_URL) return null;
+
+  try {
+    const res = await http.put(`${ADMIN_API_URL}/users/${userId}/block`);
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("blockAdminUser failed", err);
+    throw err;
+  }
+};
+
+export const activateAdminUser = async (userId) => {
+  if (!API_BASE_URL) return null;
+
+  try {
+    const res = await http.put(`${ADMIN_API_URL}/users/${userId}/activate`);
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("activateAdminUser failed", err);
+    throw err;
   }
 };
 
@@ -363,7 +442,13 @@ export default {
   fetchOwnerCancelledBookings,
   fetchRevenueStats,
   fetchAdminProperties,
+  fetchAdminDashboard,
+  fetchAdminNotifications,
   approveBookingAdmin,
   rejectBookingAdmin,
+  approveAdminProperty,
+  deleteAdminProperty,
+  blockAdminUser,
+  activateAdminUser,
   downloadAdminReportPdf,
 };

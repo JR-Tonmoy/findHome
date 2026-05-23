@@ -13,8 +13,6 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Logo from "../../../../components/Logo/Logo";
-import useAuth from "../../../../hooks/useAuth";
-import { getCurrentMemberProfile } from "../../../../utils/memberStorage";
 import { resolvePublicPropertyById } from "../../../../utils/publicPropertyResolver";
 
 const ViewDetails = () => {
@@ -22,8 +20,6 @@ const ViewDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-  const { user } = useAuth();
-  const storedProfile = getCurrentMemberProfile();
 
   const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
   const [property, setProperty] = useState(null);
@@ -61,6 +57,15 @@ const ViewDetails = () => {
       window.removeEventListener("public-properties-updated", loadProperty);
     };
   }, [id]);
+
+  const isOccupied = Boolean(
+    property?.isOccupied ||
+    ["booked", "occupied", "currently_occupied", "rented"].includes(
+      String(property?.status || property?.raw?.status || "")
+        .toLowerCase()
+        .trim(),
+    ),
+  );
 
   if (loading) {
     return (
@@ -339,31 +344,48 @@ const ViewDetails = () => {
                   )}
               </div>
 
-              <Link
-                to={isAuthenticated ? `/order/${property.id}` : "/login"}
-                state={{ from: currentLocation }}
-                className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
-                onClick={(event) => {
-                  if (!isAuthenticated) {
-                    event.preventDefault();
-                    setShowAuthModal(true);
-                  }
-                }}
-              >
-                {isAuthenticated ? (
-                  <>
-                    <Briefcase size={20} />
-                    <span>Booking Now</span>
-                  </>
-                ) : (
-                  <span>Login or Register</span>
-                )}
-              </Link>
+              {isOccupied ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-red-500 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 cursor-not-allowed opacity-90"
+                >
+                  <Briefcase size={20} />
+                  <span>Currently Occupied</span>
+                </button>
+              ) : (
+                <Link
+                  to={isAuthenticated ? `/order/${property.id}` : "/login"}
+                  state={{ from: currentLocation }}
+                  className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3.5 mt-8 items-center rounded-xl flex justify-center gap-2 transition-colors"
+                  onClick={(event) => {
+                    if (!isAuthenticated) {
+                      event.preventDefault();
+                      setShowAuthModal(true);
+                    }
+                  }}
+                >
+                  {isAuthenticated ? (
+                    <>
+                      <Briefcase size={20} />
+                      <span>Booking Now</span>
+                    </>
+                  ) : (
+                    <span>Login or Register</span>
+                  )}
+                </Link>
+              )}
 
               <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-100">
                 <span className="text-gray-500 font-medium">Availability</span>
-                <span className="text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full">
-                  Available
+                <span
+                  className={`font-bold px-3 py-1 rounded-full ${
+                    isOccupied
+                      ? "text-red-700 bg-red-50"
+                      : "text-green-600 bg-green-50"
+                  }`}
+                >
+                  {isOccupied ? "Currently Occupied" : "Available"}
                 </span>
               </div>
             </div>

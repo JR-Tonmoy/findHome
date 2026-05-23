@@ -129,22 +129,34 @@ const Browse = () => {
                 />
                 <span
                   className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    String(
-                      property.status || property.raw?.status || "available",
+                    property.isOccupied ||
+                    [
+                      "booked",
+                      "occupied",
+                      "currently_occupied",
+                      "rented",
+                    ].includes(
+                      String(property.status || property.raw?.status || "")
+                        .toLowerCase()
+                        .trim(),
                     )
-                      .toLowerCase()
-                      .includes("available")
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-red-100 text-red-700"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-emerald-100 text-emerald-700"
                   }`}
                 >
-                  {String(
-                    property.status || property.raw?.status || "Available",
+                  {property.isOccupied ||
+                  [
+                    "booked",
+                    "occupied",
+                    "currently_occupied",
+                    "rented",
+                  ].includes(
+                    String(property.status || property.raw?.status || "")
+                      .toLowerCase()
+                      .trim(),
                   )
-                    .toLowerCase()
-                    .includes("available")
-                    ? "Available"
-                    : "Currently Occupied"}
+                    ? "Currently Occupied"
+                    : "Available"}
                 </span>
               </div>
 

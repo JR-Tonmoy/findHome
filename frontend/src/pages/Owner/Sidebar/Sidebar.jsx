@@ -5,6 +5,7 @@ import {
   Home,
   LogOut,
   PlusCircle,
+  Search,
   User,
   X,
 } from "lucide-react";
@@ -48,8 +49,13 @@ const OwnerSidebar = ({ isOpen, setIsSidebarOpen }) => {
       icon: <Building size={20} />,
     },
     {
+      label: "Browse Properties",
+      path: "/dashboard/browse",
+      icon: <Search size={20} />,
+    },
+    {
       label: "Booking Requests",
-      path: "/owner-dashboard/notifications",
+      path: "/owner-dashboard/bookings",
       icon: <Bell size={20} />,
     },
     {
@@ -136,7 +142,7 @@ const OwnerSidebar = ({ isOpen, setIsSidebarOpen }) => {
               <li key={index}>
                 <NavLink
                   to={menu.path}
-                  end={menu.path === "/owner-dashboard"}
+                  end={true}
                   onClick={() =>
                     window.innerWidth < 768 && setIsSidebarOpen(false)
                   }

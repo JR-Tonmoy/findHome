@@ -9,7 +9,7 @@ const Unauthorized = () => {
 
   const handleGoHome = () => {
     if (user?.role === "admin") {
-      navigate("/admin/dashboard");
+      navigate("/admin-dashboard");
       return;
     }
 

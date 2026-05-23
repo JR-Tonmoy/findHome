@@ -69,7 +69,7 @@ const Routers = () => {
         অ্যাডমিন ড্যাশবোর্ড এর রাউট
       */}
       <Route
-        path="/admin"
+        path="/admin-dashboard"
         element={
           <RoleProtected requiredRoles={["admin"]}>
             <AdminLayout />
@@ -77,27 +77,73 @@ const Routers = () => {
         }
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        {/* /admin/dashboard */}
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="profile" element={<AdminProfile />} />
-        {/* /admin/notifications */}
         <Route path="notifications" element={<AdminNotifications />} />
-        {/* /admin/users */}
         <Route path="users" element={<AdminUsers />} />
-        {/* /admin/owners */}
         <Route path="owners" element={<AdminOwner />} />
-        {/* /admin/properties */}
         <Route path="properties" element={<ManageProperties />} />
-        {/* /admin/bookings */}
         <Route path="bookings" element={<BookingManagement />} />
-        {/* /admin/payments */}
         <Route path="payments" element={<PaymentReports />} />
-        {/* /admin/revenue (Revenue Analytics) */}
         <Route path="revenue" element={<RevenueAnalytics />} />
-        {/* /admin/subscription (Earn Money) */}
         <Route path="subscription" element={<Subscription />} />
         <Route path="earn-money" element={<Subscription />} />
       </Route>
+
+      <Route
+        path="/admin"
+        element={<Navigate to="/admin-dashboard" replace />}
+      />
+
+      <Route
+        path="/admin/dashboard"
+        element={<Navigate to="/admin-dashboard/dashboard" replace />}
+      />
+
+      <Route
+        path="/admin/profile"
+        element={<Navigate to="/admin-dashboard/profile" replace />}
+      />
+
+      <Route
+        path="/admin/notifications"
+        element={<Navigate to="/admin-dashboard/notifications" replace />}
+      />
+
+      <Route
+        path="/admin/users"
+        element={<Navigate to="/admin-dashboard/users" replace />}
+      />
+
+      <Route
+        path="/admin/owners"
+        element={<Navigate to="/admin-dashboard/owners" replace />}
+      />
+
+      <Route
+        path="/admin/properties"
+        element={<Navigate to="/admin-dashboard/properties" replace />}
+      />
+
+      <Route
+        path="/admin/bookings"
+        element={<Navigate to="/admin-dashboard/bookings" replace />}
+      />
+
+      <Route
+        path="/admin/payments"
+        element={<Navigate to="/admin-dashboard/payments" replace />}
+      />
+
+      <Route
+        path="/admin/revenue"
+        element={<Navigate to="/admin-dashboard/revenue" replace />}
+      />
+
+      <Route
+        path="/admin/subscription"
+        element={<Navigate to="/admin-dashboard/subscription" replace />}
+      />
 
       {/* 
       Dashboard ar vitor onno page dakhonor jonno Nested Route babogar kora hosca
@@ -134,6 +180,11 @@ const Routers = () => {
         <Route index element={<PropertyOwnerDashboard />} />
         <Route path="add-property" element={<AddProperty />} />
         <Route path="my-properties" element={<MyProperties />} />
+        <Route path="bookings" element={<OwnerNotifications />} />
+        <Route
+          path="booking-requests"
+          element={<Navigate to="/owner-dashboard/bookings" replace />}
+        />
         <Route path="notifications" element={<OwnerNotifications />} />
         <Route path="payments" element={<OwnerPayments />} />
         <Route path="profile" element={<OwnerProfile />} />

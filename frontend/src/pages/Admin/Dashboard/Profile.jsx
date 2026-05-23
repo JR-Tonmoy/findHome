@@ -98,7 +98,13 @@ const AdminProfile = () => {
   }, [dispatch, isAuthenticated]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: "/admin/profile" }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: "/admin-dashboard/profile" }}
+      />
+    );
   }
 
   const handleFieldChange = (event) => {
