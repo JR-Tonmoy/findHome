@@ -1,13 +1,20 @@
-import { Heart, Loader2, Bell, CalendarCheck2, CalendarX2, Home } from "lucide-react"; // Import icons for stats
+import {
+  Bell,
+  CalendarCheck2,
+  CalendarX2,
+  Heart,
+  Home,
+  Loader2,
+} from "lucide-react"; // Import icons for stats
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // Import Link
 import useAuth from "../../../hooks/useAuth";
-import { getPublicProperties } from "../../../utils/publicPropertyFeed";
-import { getSavedPropertyCount } from "../../../utils/savedPropertyStorage";
 import {
   fetchTenantBookings,
   fetchTenantNotifications,
 } from "../../../utils/notificationService";
+import { getPublicProperties } from "../../../utils/publicPropertyFeed";
+import { getSavedPropertyCount } from "../../../utils/savedPropertyStorage";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -135,7 +142,11 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500">Total Bookings</p>
           <div className="mt-2 flex items-end justify-between gap-3">
             <h2 className="text-3xl font-bold text-gray-900">
-              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.totalBookings}
+              {countsLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              ) : (
+                tenantCounts.totalBookings
+              )}
             </h2>
             <Home className="h-6 w-6 text-gray-400" />
           </div>
@@ -144,7 +155,11 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500">Active Bookings</p>
           <div className="mt-2 flex items-end justify-between gap-3">
             <h2 className="text-3xl font-bold text-gray-900">
-              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.activeBookings}
+              {countsLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              ) : (
+                tenantCounts.activeBookings
+              )}
             </h2>
             <CalendarCheck2 className="h-6 w-6 text-emerald-500" />
           </div>
@@ -153,7 +168,11 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500">Cancelled Bookings</p>
           <div className="mt-2 flex items-end justify-between gap-3">
             <h2 className="text-3xl font-bold text-gray-900">
-              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.cancelledBookings}
+              {countsLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              ) : (
+                tenantCounts.cancelledBookings
+              )}
             </h2>
             <CalendarX2 className="h-6 w-6 text-rose-500" />
           </div>
@@ -165,7 +184,11 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500">Unread Notifications</p>
           <div className="mt-2 flex items-end justify-between gap-3">
             <h2 className="text-3xl font-bold text-gray-900">
-              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.unreadNotifications}
+              {countsLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              ) : (
+                tenantCounts.unreadNotifications
+              )}
             </h2>
             <Bell className="h-6 w-6 text-blue-500" />
           </div>

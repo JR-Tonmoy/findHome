@@ -8,8 +8,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 import Logo from "../../../components/Logo/Logo";

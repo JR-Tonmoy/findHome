@@ -239,7 +239,11 @@ const Orders = () => {
                   {booking?.property_image || booking?.property?.image_url ? (
                     <img
                       src={booking.property_image || booking.property.image_url}
-                      alt={booking?.property_title || booking?.property?.title || "Booked property"}
+                      alt={
+                        booking?.property_title ||
+                        booking?.property?.title ||
+                        "Booked property"
+                      }
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = "/placeholder-property.jpg";
@@ -254,13 +258,18 @@ const Orders = () => {
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {booking?.property_title || booking?.property?.title || "Property"}
+                        {booking?.property_title ||
+                          booking?.property?.title ||
+                          "Property"}
                       </h2>
                       <p className="mt-2 text-gray-600 text-sm md:text-base">
-                        {booking?.property_address || booking?.property?.location || "Address not available"}
+                        {booking?.property_address ||
+                          booking?.property?.location ||
+                          "Address not available"}
                       </p>
                       <p className="mt-1 text-gray-500 text-sm">
-                        Owner: {booking?.owner_name || booking?.owner?.name || "Owner"}
+                        Owner:{" "}
+                        {booking?.owner_name || booking?.owner?.name || "Owner"}
                       </p>
                     </div>
 
@@ -275,7 +284,9 @@ const Orders = () => {
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Amount Paid</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {formatCurrency(booking?.amount_paid ?? booking?.amount)}
+                        {formatCurrency(
+                          booking?.amount_paid ?? booking?.amount,
+                        )}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4">
@@ -287,25 +298,35 @@ const Orders = () => {
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Payment Method</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {booking?.payment_method || booking?.payment?.payment_method || "-"}
+                        {booking?.payment_method ||
+                          booking?.payment?.payment_method ||
+                          "-"}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Booking Date</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {formatDate(booking?.booking_date || booking?.payment?.payment_date)}
+                        {formatDate(
+                          booking?.booking_date ||
+                            booking?.payment?.payment_date,
+                        )}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4 md:col-span-2">
                       <div className="text-gray-500">Owner Contact</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {booking?.owner_phone || booking?.owner?.phone || booking?.owner_email || booking?.owner?.email || "-"}
+                        {booking?.owner_phone ||
+                          booking?.owner?.phone ||
+                          booking?.owner_email ||
+                          booking?.owner?.email ||
+                          "-"}
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
-                    {booking?.can_cancel && booking?.cancellation_status !== "cancelled" ? (
+                    {booking?.can_cancel &&
+                    booking?.cancellation_status !== "cancelled" ? (
                       <button
                         type="button"
                         onClick={() => setSelectedBooking(booking)}

@@ -233,7 +233,8 @@ const NotificationsPage = () => {
                             {notification.booking.property?.title || "Booking"}
                           </p>
                           <p className="mt-1 text-gray-600">
-                            {notification.booking.property?.location || "Address not available"}
+                            {notification.booking.property?.location ||
+                              "Address not available"}
                           </p>
                         </div>
                       ) : null}
