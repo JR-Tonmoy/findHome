@@ -1,9 +1,13 @@
-import { Heart } from "lucide-react"; // Import icons for stats
+import { Heart, Loader2, Bell, CalendarCheck2, CalendarX2, Home } from "lucide-react"; // Import icons for stats
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // Import Link
 import useAuth from "../../../hooks/useAuth";
 import { getPublicProperties } from "../../../utils/publicPropertyFeed";
 import { getSavedPropertyCount } from "../../../utils/savedPropertyStorage";
+import {
+  fetchTenantBookings,
+  fetchTenantNotifications,
+} from "../../../utils/notificationService";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -13,6 +17,13 @@ const Dashboard = () => {
     getSavedPropertyCount(currentEmail),
   );
   const [recommendedHouses, setRecommendedHouses] = useState([]);
+  const [tenantCounts, setTenantCounts] = useState({
+    totalBookings: 0,
+    activeBookings: 0,
+    cancelledBookings: 0,
+    unreadNotifications: 0,
+  });
+  const [countsLoading, setCountsLoading] = useState(true);
 
   useEffect(() => {
     let isActive = true;
@@ -25,15 +36,58 @@ const Dashboard = () => {
       }
     };
 
+    const loadTenantCounts = async () => {
+      setCountsLoading(true);
+
+      try {
+        const [bookingsResponse, notificationsResponse] = await Promise.all([
+          fetchTenantBookings(),
+          fetchTenantNotifications(),
+        ]);
+
+        if (!isActive) return;
+
+        const bookings = Array.isArray(bookingsResponse?.data)
+          ? bookingsResponse.data
+          : [];
+        const activeBookings = bookings.filter(
+          (booking) => booking?.cancellation_status !== "cancelled",
+        );
+        const cancelledBookings = bookings.filter(
+          (booking) => booking?.cancellation_status === "cancelled",
+        );
+
+        setTenantCounts({
+          totalBookings: bookings.length,
+          activeBookings: activeBookings.length,
+          cancelledBookings: cancelledBookings.length,
+          unreadNotifications: notificationsResponse?.unread_count || 0,
+        });
+      } catch {
+        if (!isActive) return;
+        setTenantCounts({
+          totalBookings: 0,
+          activeBookings: 0,
+          cancelledBookings: 0,
+          unreadNotifications: 0,
+        });
+      } finally {
+        if (isActive) setCountsLoading(false);
+      }
+    };
+
     const refreshSavedCount = () => {
       setSavedCount(getSavedPropertyCount(currentEmail));
     };
 
     loadRecommendedHouses();
+    loadTenantCounts();
     refreshSavedCount();
     window.addEventListener("saved-properties-updated", refreshSavedCount);
     window.addEventListener("storage", refreshSavedCount);
     window.addEventListener("owner-properties-updated", loadRecommendedHouses);
+
+    const interval = setInterval(loadTenantCounts, 15000);
 
     return () => {
       isActive = false;
@@ -43,6 +97,7 @@ const Dashboard = () => {
         "owner-properties-updated",
         loadRecommendedHouses,
       );
+      clearInterval(interval);
     };
   }, [currentEmail]);
 
@@ -71,6 +126,48 @@ const Dashboard = () => {
           </div>
           <div className="bg-blue-50 p-3 rounded-xl text-black">
             <Heart size={24} />
+          </div>
+        </Link>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Total Bookings</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <h2 className="text-3xl font-bold text-gray-900">
+              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.totalBookings}
+            </h2>
+            <Home className="h-6 w-6 text-gray-400" />
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Active Bookings</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <h2 className="text-3xl font-bold text-gray-900">
+              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.activeBookings}
+            </h2>
+            <CalendarCheck2 className="h-6 w-6 text-emerald-500" />
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-500">Cancelled Bookings</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <h2 className="text-3xl font-bold text-gray-900">
+              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.cancelledBookings}
+            </h2>
+            <CalendarX2 className="h-6 w-6 text-rose-500" />
+          </div>
+        </div>
+        <Link
+          to="/dashboard/notifications"
+          className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md"
+        >
+          <p className="text-sm text-gray-500">Unread Notifications</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <h2 className="text-3xl font-bold text-gray-900">
+              {countsLoading ? <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : tenantCounts.unreadNotifications}
+            </h2>
+            <Bell className="h-6 w-6 text-blue-500" />
           </div>
         </Link>
       </div>

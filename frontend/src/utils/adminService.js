@@ -109,6 +109,30 @@ export const fetchAdminBookings = async () => {
   }
 };
 
+export const fetchOwnerCancelledBookings = async () => {
+  if (!API_BASE_URL) return [];
+
+  try {
+    const res = await http.get(`${PUBLIC_API_URL}/owner/cancelled-bookings`);
+    return res?.data?.data || res?.data || [];
+  } catch (err) {
+    console.warn("fetchOwnerCancelledBookings failed", err);
+    return [];
+  }
+};
+
+export const fetchAdminCancelledBookings = async () => {
+  if (!API_BASE_URL) return [];
+
+  try {
+    const res = await http.get(`${PUBLIC_API_URL}/admin/cancelled-bookings`);
+    return res?.data?.data || res?.data || [];
+  } catch (err) {
+    console.warn("fetchAdminCancelledBookings failed", err);
+    return [];
+  }
+};
+
 export const fetchDashboardStats = async () => {
   // Prefer admin stats endpoint, otherwise compute from local cache
   if (!API_BASE_URL) {
@@ -332,9 +356,11 @@ export default {
   fetchAdminOwners,
   deleteAdminUser,
   deleteAdminOwner,
+  fetchAdminCancelledBookings,
   fetchAdminBookings,
   fetchDashboardStats,
   fetchPaymentsAdmin,
+  fetchOwnerCancelledBookings,
   fetchRevenueStats,
   fetchAdminProperties,
   approveBookingAdmin,

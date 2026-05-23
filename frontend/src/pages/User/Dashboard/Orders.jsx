@@ -1,8 +1,9 @@
 import axios from "axios";
-import { Download, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../../../hooks/useAuth";
+import { fetchTenantBookings } from "../../../utils/notificationService";
 
 const Orders = () => {
   const { token } = useAuth();
@@ -12,6 +13,8 @@ const Orders = () => {
   const [cancellingId, setCancellingId] = useState(null);
   const [downloadingRefundId, setDownloadingRefundId] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [successBooking, setSuccessBooking] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -21,30 +24,11 @@ const Orders = () => {
       setError("");
 
       try {
-        const authToken =
-          token ||
-          localStorage.getItem("token") ||
-          localStorage.getItem("access_token");
-
-        if (!authToken) {
-          if (active) setBookings([]);
-          return;
-        }
-
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/tenant/my-bookings",
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          },
-        );
+        const response = await fetchTenantBookings();
 
         if (!active) return;
 
-        setBookings(
-          Array.isArray(response?.data?.bookings) ? response.data.bookings : [],
-        );
+        setBookings(Array.isArray(response?.data) ? response.data : []);
       } catch {
         if (!active) return;
         setError("Failed to load bookings. Please try again.");
@@ -108,28 +92,9 @@ const Orders = () => {
   };
 
   const refreshBookings = async () => {
-    const authToken =
-      token ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("access_token");
+    const response = await fetchTenantBookings();
 
-    if (!authToken) {
-      setBookings([]);
-      return;
-    }
-
-    const response = await axios.get(
-      "http://127.0.0.1:8000/api/tenant/my-bookings",
-      {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      },
-    );
-
-    setBookings(
-      Array.isArray(response?.data?.bookings) ? response.data.bookings : [],
-    );
+    setBookings(Array.isArray(response?.data) ? response.data : []);
   };
 
   const handleCancelBooking = async () => {
@@ -144,7 +109,7 @@ const Orders = () => {
         localStorage.getItem("token") ||
         localStorage.getItem("access_token");
 
-      await axios.post(
+      const response = await axios.post(
         `http://127.0.0.1:8000/api/bookings/${selectedBooking.id}/cancel`,
         {},
         {
@@ -155,7 +120,15 @@ const Orders = () => {
       );
 
       await refreshBookings();
+      const refundData = response?.data?.data || {};
+      setSuccessBooking({
+        ...selectedBooking,
+        ...refundData,
+      });
       setSelectedBooking(null);
+      setShowSuccessModal(true);
+
+      void downloadRefundDocument(selectedBooking.id, true);
     } catch (requestError) {
       const message =
         requestError?.response?.data?.message ||
@@ -166,10 +139,10 @@ const Orders = () => {
     }
   };
 
-  const downloadRefundDocument = async (booking) => {
-    if (!booking?.id) return;
+  const downloadRefundDocument = async (bookingId, isAutoDownload = false) => {
+    if (!bookingId) return;
 
-    setDownloadingRefundId(booking.id);
+    setDownloadingRefundId(bookingId);
 
     try {
       const authToken =
@@ -178,7 +151,7 @@ const Orders = () => {
         localStorage.getItem("access_token");
 
       const response = await axios.get(
-        `http://127.0.0.1:8000/api/refund/${booking.id}/document`,
+        `http://127.0.0.1:8000/api/bookings/${bookingId}/refund-pdf`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -190,13 +163,15 @@ const Orders = () => {
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `refund-booking-${booking.id}.pdf`;
+      link.download = `refund-booking-${bookingId}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
     } catch {
-      setError("Failed to download refund document. Please try again.");
+      if (!isAutoDownload) {
+        setError("Failed to download refund document. Please try again.");
+      }
     } finally {
       setDownloadingRefundId(null);
     }
@@ -261,10 +236,10 @@ const Orders = () => {
             >
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-64 h-48 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                  {booking?.property?.image_url ? (
+                  {booking?.property_image || booking?.property?.image_url ? (
                     <img
-                      src={booking.property.image_url}
-                      alt={booking?.property?.title || "Booked property"}
+                      src={booking.property_image || booking.property.image_url}
+                      alt={booking?.property_title || booking?.property?.title || "Booked property"}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = "/placeholder-property.jpg";
@@ -279,13 +254,13 @@ const Orders = () => {
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {booking?.property?.title || "Property"}
+                        {booking?.property_title || booking?.property?.title || "Property"}
                       </h2>
                       <p className="mt-2 text-gray-600 text-sm md:text-base">
-                        {booking?.property?.location || "Address not available"}
+                        {booking?.property_address || booking?.property?.location || "Address not available"}
                       </p>
                       <p className="mt-1 text-gray-500 text-sm">
-                        Owner: {booking?.owner?.name || "Owner"}
+                        Owner: {booking?.owner_name || booking?.owner?.name || "Owner"}
                       </p>
                     </div>
 
@@ -300,7 +275,7 @@ const Orders = () => {
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Amount Paid</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {formatCurrency(booking?.amount)}
+                        {formatCurrency(booking?.amount_paid ?? booking?.amount)}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4">
@@ -312,27 +287,25 @@ const Orders = () => {
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Payment Method</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {booking?.payment_method || "-"}
+                        {booking?.payment_method || booking?.payment?.payment_method || "-"}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4">
                       <div className="text-gray-500">Booking Date</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {formatDate(
-                          booking?.booking_date || booking?.payment_date,
-                        )}
+                        {formatDate(booking?.booking_date || booking?.payment?.payment_date)}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-4 md:col-span-2">
                       <div className="text-gray-500">Owner Contact</div>
                       <div className="mt-1 font-semibold text-gray-900">
-                        {booking?.owner?.phone || booking?.owner?.email || "-"}
+                        {booking?.owner_phone || booking?.owner?.phone || booking?.owner_email || booking?.owner?.email || "-"}
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
-                    {booking?.can_cancel && !booking?.is_cancelled ? (
+                    {booking?.can_cancel && booking?.cancellation_status !== "cancelled" ? (
                       <button
                         type="button"
                         onClick={() => setSelectedBooking(booking)}
@@ -342,12 +315,12 @@ const Orders = () => {
                       </button>
                     ) : null}
 
-                    {(booking?.is_cancelled ||
+                    {(booking?.cancellation_status === "cancelled" ||
                       booking?.refund_status === "processed") &&
                     booking?.refund_document_url ? (
                       <button
                         type="button"
-                        onClick={() => downloadRefundDocument(booking)}
+                        onClick={() => downloadRefundDocument(booking.id)}
                         disabled={downloadingRefundId === booking.id}
                         className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
                       >
@@ -360,7 +333,7 @@ const Orders = () => {
                       </button>
                     ) : null}
 
-                    {booking?.is_cancelled ||
+                    {booking?.cancellation_status === "cancelled" ||
                     booking?.refund_status === "processed" ? (
                       <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
                         Refund split:{" "}
@@ -443,6 +416,85 @@ const Orders = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSuccessModal && successBooking ? (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+            <div className="flex items-start gap-4">
+              <div className="rounded-full bg-emerald-100 p-3 text-emerald-700">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-slate-900">
+                  Booking Cancelled Successfully
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Your house booking has been cancelled successfully.
+                  <br />
+                  Refund processed successfully.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 sm:grid-cols-3">
+              <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Tenant Refund
+                </div>
+                <div className="mt-2 text-lg font-bold text-slate-900">
+                  {formatCurrency(successBooking?.refund_amount ?? 0)}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">90%</div>
+              </div>
+              <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Owner Share
+                </div>
+                <div className="mt-2 text-lg font-bold text-slate-900">
+                  {formatCurrency(successBooking?.owner_share ?? 0)}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">7%</div>
+              </div>
+              <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Admin Charge
+                </div>
+                <div className="mt-2 text-lg font-bold text-slate-900">
+                  {formatCurrency(successBooking?.admin_share ?? 0)}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">3%</div>
+              </div>
+            </div>
+
+            <p className="mt-5 text-sm leading-6 text-slate-600">
+              Your cancellation document has been generated successfully.
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadRefundDocument(successBooking.id)}
+                disabled={downloadingRefundId === successBooking.id}
+                className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {downloadingRefundId === successBooking.id ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download PDF
               </button>
             </div>
           </div>

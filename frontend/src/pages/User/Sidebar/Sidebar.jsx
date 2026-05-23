@@ -9,21 +9,63 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 import Logo from "../../../components/Logo/Logo";
 import { logoutSuccess } from "../../../features/auth/authSlice";
 import useAuth from "../../../hooks/useAuth";
 import { getAvatarUrl } from "../../../utils/avatarHelper";
+import {
+  fetchTenantBookings,
+  fetchTenantUnreadNotificationCount,
+} from "../../../utils/notificationService";
 
 const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
+  const [sidebarCounts, setSidebarCounts] = useState({
+    bookings: 0,
+    unreadNotifications: 0,
+  });
   const syncedProfile = {
     ...user,
     avatar: getAvatarUrl(user),
   };
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCounts = async () => {
+      try {
+        const [bookingsResponse, unreadNotifications] = await Promise.all([
+          fetchTenantBookings(),
+          fetchTenantUnreadNotificationCount(),
+        ]);
+
+        if (!active) return;
+
+        setSidebarCounts({
+          bookings: Array.isArray(bookingsResponse?.data)
+            ? bookingsResponse.data.length
+            : 0,
+          unreadNotifications: unreadNotifications || 0,
+        });
+      } catch {
+        if (!active) return;
+        setSidebarCounts({ bookings: 0, unreadNotifications: 0 });
+      }
+    };
+
+    loadCounts();
+    const interval = setInterval(loadCounts, 15000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = () => {
     dispatch(logoutSuccess());
@@ -42,6 +84,7 @@ const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
       label: "My Bookings",
       path: "/dashboard/orders",
       icon: <Bell size={20} />,
+      count: sidebarCounts.bookings,
     },
     {
       label: "Saved Houses",
@@ -52,6 +95,7 @@ const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
       label: "Notifications",
       path: "/dashboard/notifications",
       icon: <Bell size={20} />,
+      count: sidebarCounts.unreadNotifications,
     },
     {
       label: "Payment History",
@@ -146,6 +190,11 @@ const TenantSidebar = ({ isOpen, setIsSidebarOpen }) => {
                 >
                   {menu.icon}
                   <span>{menu.label}</span>
+                  {menu.count > 0 ? (
+                    <span className="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                      {menu.count > 99 ? "99+" : menu.count}
+                    </span>
+                  ) : null}
                 </NavLink>
               </li>
             ))}

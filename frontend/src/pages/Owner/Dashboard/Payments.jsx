@@ -1,294 +1,327 @@
+import axios from "axios";
 import {
-  Calendar,
-  DollarSign,
+  Check,
   Download,
-  Filter,
+  Loader2,
+  RotateCcw,
   TrendingUp,
+  XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import adminService from "../../../utils/adminService";
 
 const OwnerPayments = () => {
-  const [earnings, setEarnings] = useState([]);
+  const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterMonth, setFilterMonth] = useState("all");
+  const [error, setError] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [downloadingId, setDownloadingId] = useState(null);
   const [stats, setStats] = useState({
-    totalEarnings: 0,
-    thisMonth: 0,
-    pendingAmount: 0,
+    cancelledBookings: 0,
+    processedRefunds: 0,
+    tenantRefundTotal: 0,
+    ownerShareTotal: 0,
   });
 
   useEffect(() => {
-    // Simulate fetching earnings data from backend
-    const loadEarnings = async () => {
+    let active = true;
+
+    const loadRefunds = async () => {
       setLoading(true);
+      setError("");
+
       try {
-        // Mock data - replace with actual backend API call
-        const mockEarnings = [
-          {
-            id: 1,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            tenantName: "John Doe",
-            amount: 25000,
-            date: new Date(2026, 4, 5),
-            status: "paid",
-            method: "bkash",
-          },
-          {
-            id: 2,
-            propertyTitle: "Studio Flat in Dhanmondi",
-            tenantName: "Jane Smith",
-            amount: 15000,
-            date: new Date(2026, 4, 10),
-            status: "paid",
-            method: "nagad",
-          },
-          {
-            id: 3,
-            propertyTitle: "Luxury Apartment in Mirpur",
-            tenantName: "Mike Johnson",
-            amount: 25000,
-            date: new Date(2026, 4, 15),
-            status: "pending",
-            method: "bank_transfer",
-          },
-          {
-            id: 4,
-            propertyTitle: "2BHK House in Gulshan",
-            tenantName: "Sarah Connor",
-            amount: 35000,
-            date: new Date(2026, 3, 20),
-            status: "paid",
-            method: "bkash",
-          },
-        ];
+        const data = await adminService.fetchOwnerCancelledBookings();
+        if (!active) return;
 
-        setEarnings(mockEarnings);
+        const normalized = Array.isArray(data) ? data : [];
+        setRefunds(normalized);
 
-        // Calculate stats
-        const total = mockEarnings.reduce((sum, e) => sum + e.amount, 0);
-        const thisMonth = mockEarnings
-          .filter((e) => e.date.getMonth() === new Date().getMonth())
-          .reduce((sum, e) => sum + e.amount, 0);
-        const pending = mockEarnings
-          .filter((e) => e.status === "pending")
-          .reduce((sum, e) => sum + e.amount, 0);
+        const processed = normalized.filter(
+          (item) => item.refund_status === "processed",
+        );
 
         setStats({
-          totalEarnings: total,
-          thisMonth: thisMonth,
-          pendingAmount: pending,
+          cancelledBookings: normalized.length,
+          processedRefunds: processed.length,
+          tenantRefundTotal: normalized.reduce(
+            (sum, item) => sum + Number(item.refund_amount || 0),
+            0,
+          ),
+          ownerShareTotal: normalized.reduce(
+            (sum, item) => sum + Number(item.owner_share || 0),
+            0,
+          ),
         });
-      } catch (err) {
-        console.error("Failed to load earnings:", err);
+      } catch {
+        if (!active) return;
+        setError("Failed to load cancelled bookings. Please try again.");
+        setRefunds([]);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    loadEarnings();
+    loadRefunds();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const filteredEarnings = earnings.filter((e) => {
-    if (filterMonth === "all") return true;
-    if (filterMonth === "pending") return e.status === "pending";
-    if (filterMonth === "paid") return e.status === "paid";
-    return true;
-  });
+  const filteredRefunds = useMemo(() => {
+    if (filterStatus === "all") return refunds;
+    return refunds.filter((refund) => refund.refund_status === filterStatus);
+  }, [refunds, filterStatus]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "paid":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-BD", {
+      style: "currency",
+      currency: "BDT",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
+
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "-";
+    return new Date(dateValue).toLocaleDateString("en-BD", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handleDownloadRefundPdf = async (bookingId) => {
+    if (!bookingId) return;
+
+    setDownloadingId(bookingId);
+
+    try {
+      const token =
+        localStorage.getItem("access_token") || localStorage.getItem("token");
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/bookings/${bookingId}/refund-pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `refund-booking-${bookingId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(
+        err?.response?.data?.message || "Failed to download refund PDF.",
+      );
+    } finally {
+      setDownloadingId(null);
     }
-  };
-
-  const getMethodLabel = (method) => {
-    const methods = {
-      bkash: "bKash",
-      nagad: "Nagad",
-      bank_transfer: "Bank Transfer",
-      rocket: "Rocket",
-    };
-    return methods[method] || method;
-  };
-
-  const handleDownloadReport = () => {
-    // Generate CSV or PDF report
-    alert("Report download feature coming soon!");
   };
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Payments & Earnings
+          Payments & Refunds
         </h1>
         <p className="text-gray-600">
-          Track all your rental income and payment history
+          Review cancelled bookings, refund windows, and downloadable refund
+          documents.
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200 p-6 shadow-sm">
+      {error ? (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
+        <div className="rounded-2xl border border-rose-200 bg-linear-to-br from-rose-50 to-rose-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-rose-700 text-sm font-medium">
+                Cancelled Bookings
+              </p>
+              <p className="mt-2 text-3xl font-bold text-rose-900">
+                {stats.cancelledBookings}
+              </p>
+            </div>
+            <XCircle size={32} className="text-rose-400" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-linear-to-br from-emerald-50 to-emerald-100 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-emerald-700 text-sm font-medium">
-                Total Earnings
+                Refund Window Processed
               </p>
-              <p className="text-3xl font-bold text-emerald-900 mt-2">
-                ৳{stats.totalEarnings.toLocaleString()}
+              <p className="mt-2 text-3xl font-bold text-emerald-900">
+                {stats.processedRefunds}
               </p>
-              <p className="text-emerald-700 text-xs mt-1">All time</p>
             </div>
-            <div className="bg-white rounded-full p-3">
-              <DollarSign size={32} className="text-emerald-600" />
-            </div>
+            <Check size={32} className="text-emerald-400" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
+        <div className="rounded-2xl border border-blue-200 bg-linear-to-br from-blue-50 to-blue-100 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-700 text-sm font-medium">This Month</p>
-              <p className="text-3xl font-bold text-blue-900 mt-2">
-                ৳{stats.thisMonth.toLocaleString()}
+              <p className="text-blue-700 text-sm font-medium">
+                Tenant Refunds
               </p>
-              <p className="text-blue-700 text-xs mt-1">
-                {new Date().toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
+              <p className="mt-2 text-3xl font-bold text-blue-900">
+                {formatCurrency(stats.tenantRefundTotal)}
               </p>
             </div>
-            <div className="bg-white rounded-full p-3">
-              <Calendar size={32} className="text-blue-600" />
-            </div>
+            <RotateCcw size={32} className="text-blue-400" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200 p-6 shadow-sm">
+        <div className="rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 to-amber-100 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-amber-700 text-sm font-medium">Pending</p>
-              <p className="text-3xl font-bold text-amber-900 mt-2">
-                ৳{stats.pendingAmount.toLocaleString()}
-              </p>
-              <p className="text-amber-700 text-xs mt-1">
-                Awaiting confirmation
+              <p className="text-amber-700 text-sm font-medium">Owner Share</p>
+              <p className="mt-2 text-3xl font-bold text-amber-900">
+                {formatCurrency(stats.ownerShareTotal)}
               </p>
             </div>
-            <div className="bg-white rounded-full p-3">
-              <TrendingUp size={32} className="text-amber-600" />
-            </div>
+            <TrendingUp size={32} className="text-amber-400" />
           </div>
         </div>
       </div>
 
-      {/* Filters & Actions */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex gap-2 flex-wrap">
-            {["all", "paid", "pending"].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setFilterMonth(filter)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize flex items-center gap-2 ${
-                  filterMonth === filter
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <Filter size={16} />
-                {filter}
-              </button>
-            ))}
-          </div>
+      <div className="mb-6 flex flex-wrap gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        {["all", "processed", "pending", "failed"].map((status) => (
           <button
-            onClick={handleDownloadReport}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            key={status}
+            onClick={() => setFilterStatus(status)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition ${
+              filterStatus === status
+                ? "bg-slate-900 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
           >
-            <Download size={16} />
-            Download Report
+            {status === "all" ? "All Refunds" : status}
           </button>
-        </div>
+        ))}
       </div>
 
-      {/* Earnings Table */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <p className="text-gray-600">Loading payment history...</p>
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm">
+          Loading cancelled bookings...
         </div>
-      ) : filteredEarnings.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <DollarSign size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No payments yet
+      ) : filteredRefunds.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <XCircle size={48} className="mx-auto mb-4 text-gray-400" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">
+            No cancelled bookings found
           </h3>
           <p className="text-gray-600">
-            Your payment history will appear here once you receive bookings.
+            Refund history will appear here when tenants cancel paid bookings.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Property
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Tenant
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Amount
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Property
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Method
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Cancellation Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Date
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Refund Amount
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Owner Share
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    PDF
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredEarnings.map((earning) => (
+                {filteredRefunds.map((refund) => (
                   <tr
-                    key={earning.id}
+                    key={refund.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {earning.propertyTitle}
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {refund.tenant_name || "Tenant"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {refund.tenant_email || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {refund.property_title || "Property"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {refund.property_location || "-"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {earning.tenantName}
+                      {formatDate(refund.cancelled_at)}
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-emerald-600">
-                      ৳{earning.amount.toLocaleString()}
+                    <td className="px-6 py-4 text-sm font-semibold text-emerald-700">
+                      {formatCurrency(refund.refund_amount)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {getMethodLabel(earning.method)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {earning.date.toLocaleDateString("en-US")}
+                    <td className="px-6 py-4 text-sm font-semibold text-amber-700">
+                      {formatCurrency(refund.owner_share)}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                          earning.status,
-                        )}`}
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          refund.refund_status === "processed"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : refund.refund_status === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-rose-100 text-rose-700"
+                        }`}
                       >
-                        {earning.status === "paid" ? "✓ Paid" : "⏳ Pending"}
+                        {refund.refund_status || "processed"}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDownloadRefundPdf(refund.booking_id)
+                        }
+                        disabled={downloadingId === refund.booking_id}
+                        className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {downloadingId === refund.booking_id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Download size={16} />
+                        )}
+                        {downloadingId === refund.booking_id
+                          ? "Downloading"
+                          : "PDF"}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -297,24 +330,6 @@ const OwnerPayments = () => {
           </div>
         </div>
       )}
-
-      {/* Payment Methods Info */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-3">
-          Available Payment Methods
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {["bKash", "Nagad", "Rocket", "Bank Transfer"].map((method) => (
-            <div
-              key={method}
-              className="bg-white rounded-lg p-3 border border-blue-100 text-center"
-            >
-              <p className="text-sm font-medium text-gray-900">{method}</p>
-              <p className="text-xs text-gray-600 mt-1">Fast & Secure</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

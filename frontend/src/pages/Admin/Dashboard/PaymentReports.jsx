@@ -1,4 +1,14 @@
-import { BarChart3, DollarSign, Download, TrendingUp } from "lucide-react";
+import axios from "axios";
+import {
+  BarChart3,
+  Check,
+  DollarSign,
+  Download,
+  Loader2,
+  RotateCcw,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import adminService from "../../../utils/adminService";
 
@@ -10,8 +20,16 @@ const PaymentReports = () => {
     pendingAmount: 0,
     totalTransactions: 0,
   });
+  const [cancelledBookings, setCancelledBookings] = useState([]);
+  const [cancelStats, setCancelStats] = useState({
+    cancelledBookings: 0,
+    processedRefunds: 0,
+    refundTotal: 0,
+    adminShareTotal: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [downloadingRefundId, setDownloadingRefundId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -19,7 +37,10 @@ const PaymentReports = () => {
     const loadPaymentData = async () => {
       setLoading(true);
       try {
-        const payments = await adminService.fetchPaymentsAdmin();
+        const [payments, refunds] = await Promise.all([
+          adminService.fetchPaymentsAdmin(),
+          adminService.fetchAdminCancelledBookings(),
+        ]);
         if (!active) return;
 
         // payments may be an array of objects coming from backend
@@ -69,6 +90,24 @@ const PaymentReports = () => {
           pendingAmount: pending,
           totalTransactions: normalized.length,
         });
+
+        const refundRows = Array.isArray(refunds) ? refunds : [];
+        const processedRefundRows = refundRows.filter(
+          (refund) => refund.refund_status === "processed",
+        );
+        setCancelledBookings(refundRows);
+        setCancelStats({
+          cancelledBookings: refundRows.length,
+          processedRefunds: processedRefundRows.length,
+          refundTotal: refundRows.reduce(
+            (sum, refund) => sum + Number(refund.refund_amount || 0),
+            0,
+          ),
+          adminShareTotal: refundRows.reduce(
+            (sum, refund) => sum + Number(refund.admin_share || 0),
+            0,
+          ),
+        });
       } catch (err) {
         console.error("Failed to load payment data:", err);
       } finally {
@@ -93,6 +132,57 @@ const PaymentReports = () => {
         return "text-red-600 bg-red-100";
       default:
         return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-BD", {
+      style: "currency",
+      currency: "BDT",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
+
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "-";
+    return new Date(dateValue).toLocaleDateString("en-BD", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handleDownloadRefundPdf = async (bookingId) => {
+    if (!bookingId) return;
+
+    setDownloadingRefundId(bookingId);
+
+    try {
+      const token =
+        localStorage.getItem("access_token") || localStorage.getItem("token");
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/bookings/${bookingId}/refund-pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `refund-booking-${bookingId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download refund PDF:", err);
+    } finally {
+      setDownloadingRefundId(null);
     }
   };
 
@@ -136,7 +226,7 @@ const PaymentReports = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-700 text-sm font-medium">Total Revenue</p>
@@ -149,7 +239,7 @@ const PaymentReports = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-700 text-sm font-medium">This Month</p>
@@ -162,7 +252,7 @@ const PaymentReports = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg border border-yellow-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-yellow-50 to-yellow-100 rounded-lg border border-yellow-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-yellow-700 text-sm font-medium">
@@ -177,7 +267,7 @@ const PaymentReports = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6 shadow-sm">
+        <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-700 text-sm font-medium">
@@ -189,6 +279,60 @@ const PaymentReports = () => {
               <p className="text-purple-600 text-xs mt-2">Total count</p>
             </div>
             <DollarSign size={32} className="text-purple-300" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-linear-to-br from-rose-50 to-rose-100 rounded-lg border border-rose-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-rose-700 text-sm font-medium">
+                Cancelled Bookings
+              </p>
+              <p className="text-3xl font-bold text-rose-900 mt-2">
+                {cancelStats.cancelledBookings}
+              </p>
+            </div>
+            <XCircle size={32} className="text-rose-300" />
+          </div>
+        </div>
+
+        <div className="bg-linear-to-br from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-emerald-700 text-sm font-medium">
+                Refund Window Processed
+              </p>
+              <p className="text-3xl font-bold text-emerald-900 mt-2">
+                {cancelStats.processedRefunds}
+              </p>
+            </div>
+            <Check size={32} className="text-emerald-300" />
+          </div>
+        </div>
+
+        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-700 text-sm font-medium">Refund Total</p>
+              <p className="text-3xl font-bold text-blue-900 mt-2">
+                {formatCurrency(cancelStats.refundTotal)}
+              </p>
+            </div>
+            <RotateCcw size={32} className="text-blue-300" />
+          </div>
+        </div>
+
+        <div className="bg-linear-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-amber-700 text-sm font-medium">Admin Share</p>
+              <p className="text-3xl font-bold text-amber-900 mt-2">
+                {formatCurrency(cancelStats.adminShareTotal)}
+              </p>
+            </div>
+            <TrendingUp size={32} className="text-amber-300" />
           </div>
         </div>
       </div>
@@ -356,6 +500,111 @@ const PaymentReports = () => {
           </div>
         </div>
       )}
+
+      <div className="mt-8 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-bold text-gray-900">
+            Cancelled Bookings & Refunds
+          </h3>
+        </div>
+
+        {cancelledBookings.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No cancelled bookings found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Tenant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Owner
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Property
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Cancelled
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Refund Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Admin Share
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    PDF
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {cancelledBookings.map((refund) => (
+                  <tr
+                    key={refund.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="font-medium">
+                        {refund.tenant_name || "Tenant"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {refund.tenant_email || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      <div className="font-medium">
+                        {refund.owner_name || "Owner"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {refund.owner_email || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      <div className="font-medium">
+                        {refund.property_title || "Property"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {refund.property_location || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {formatDate(refund.cancelled_at)}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-emerald-700">
+                      {formatCurrency(refund.refund_amount)}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-amber-700">
+                      {formatCurrency(refund.admin_share)}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDownloadRefundPdf(refund.booking_id)
+                        }
+                        disabled={downloadingRefundId === refund.booking_id}
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {downloadingRefundId === refund.booking_id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Download size={16} />
+                        )}
+                        {downloadingRefundId === refund.booking_id
+                          ? "Downloading"
+                          : "PDF"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

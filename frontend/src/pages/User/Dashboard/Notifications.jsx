@@ -1,9 +1,18 @@
-import { Bell, CheckCircle, CreditCard, Trash2 } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  MessageSquare,
+  RotateCcw,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   deleteNotification,
-  fetchNotifications,
+  fetchTenantNotifications,
   markNotificationAsRead,
 } from "../../../utils/notificationService";
 
@@ -12,17 +21,23 @@ const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // all, unread, read
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [filter, setFilter] = useState("all");
 
-  // Load notifications
   const loadNotifications = async () => {
+    setError("");
     setIsLoading(true);
+
     try {
-      const response = await fetchNotifications();
-      setNotifications(response?.data || []);
+      const response = await fetchTenantNotifications();
+      setNotifications(Array.isArray(response?.data) ? response.data : []);
       setUnreadCount(response?.unread_count || 0);
     } catch (err) {
       console.error("Failed to load notifications:", err);
+      setError("Failed to load notifications. Please try again.");
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }
@@ -31,10 +46,11 @@ const NotificationsPage = () => {
   useEffect(() => {
     loadNotifications();
 
-    // Poll for new notifications every 10 seconds
-    const interval = setInterval(() => {
-      loadNotifications();
-    }, 10000);
+    const interval = setInterval(async () => {
+      setIsRefreshing(true);
+      await loadNotifications();
+      setIsRefreshing(false);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -42,7 +58,7 @@ const NotificationsPage = () => {
   const handleMarkAsRead = async (notificationId) => {
     try {
       await markNotificationAsRead(notificationId);
-      loadNotifications();
+      await loadNotifications();
     } catch (err) {
       console.error("Failed to mark notification as read:", err);
     }
@@ -51,48 +67,52 @@ const NotificationsPage = () => {
   const handleDelete = async (notificationId) => {
     try {
       await deleteNotification(notificationId);
-      loadNotifications();
+      await loadNotifications();
     } catch (err) {
       console.error("Failed to delete notification:", err);
     }
   };
 
-  // Filter notifications
-  let filteredNotifications = notifications;
-  if (filter === "unread") {
-    filteredNotifications = notifications.filter((n) => !n.is_read);
-  } else if (filter === "read") {
-    filteredNotifications = notifications.filter((n) => n.is_read);
-  }
+  const filteredNotifications = notifications.filter((notification) => {
+    if (filter === "unread") return !notification.is_read;
+    if (filter === "read") return notification.is_read;
+    return true;
+  });
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case "booking_request":
-        return "📋";
       case "booking_approved":
-        return "✅";
-      case "booking_rejected":
-        return "❌";
+      case "booking_confirmed":
+        return <CheckCircle2 className="h-5 w-5" />;
       case "payment_completed":
-        return "💳";
+      case "payment_successful":
+        return <CreditCard className="h-5 w-5" />;
+      case "refund_processed":
+        return <RotateCcw className="h-5 w-5" />;
+      case "booking_cancelled":
+        return <Shield className="h-5 w-5" />;
+      case "owner_message":
+        return <MessageSquare className="h-5 w-5" />;
+      case "admin_notification":
+        return <Bell className="h-5 w-5" />;
       default:
-        return "🔔";
+        return <Bell className="h-5 w-5" />;
     }
   };
 
-  const getNotificationColor = (type) => {
-    switch (type) {
-      case "booking_request":
-        return "bg-blue-50 border-blue-200";
-      case "booking_approved":
-        return "bg-green-50 border-green-200";
-      case "booking_rejected":
-        return "bg-red-50 border-red-200";
-      case "payment_completed":
-        return "bg-emerald-50 border-emerald-200";
-      default:
-        return "bg-gray-50 border-gray-200";
-    }
+  const getNotificationStyles = (type, isRead) => {
+    const tone = {
+      booking_approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      booking_confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      payment_completed: "border-blue-200 bg-blue-50 text-blue-700",
+      payment_successful: "border-blue-200 bg-blue-50 text-blue-700",
+      refund_processed: "border-amber-200 bg-amber-50 text-amber-700",
+      booking_cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+      owner_message: "border-indigo-200 bg-indigo-50 text-indigo-700",
+      admin_notification: "border-slate-200 bg-slate-50 text-slate-700",
+    };
+
+    return `${tone[type] || "border-gray-200 bg-gray-50 text-gray-700"} ${isRead ? "opacity-90" : "shadow-sm"}`;
   };
 
   const canPayNow = (notification) =>
@@ -109,26 +129,31 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 md:px-0 md:py-8 min-h-[calc(100vh-80px)]">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Bell size={32} />
-          Notifications
-        </h1>
-        <p className="text-gray-600 mt-2">
-          You have {unreadCount} unread notification
-          {unreadCount !== 1 ? "s" : ""}
-        </p>
+    <div className="mx-auto min-h-[calc(100vh-80px)] max-w-5xl px-4 py-6 md:px-0 md:py-8">
+      <div className="mb-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-900">
+              <Bell size={32} />
+              Notifications
+            </h1>
+            <p className="mt-2 text-gray-600">
+              {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            <span>Refreshing every 15 seconds</span>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-2">
         {["all", "unread", "read"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
+            className={`rounded-lg px-4 py-2 font-medium transition ${
               filter === f
                 ? "bg-black text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -139,15 +164,20 @@ const NotificationsPage = () => {
         ))}
       </div>
 
-      {/* Notifications List */}
+      {error ? (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="space-y-4">
         {isLoading ? (
-          <div className="text-center py-12 text-gray-500">
-            <Bell size={48} className="mx-auto mb-4 opacity-50" />
-            <p>Loading notifications...</p>
+          <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center text-gray-500 shadow-sm">
+            <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-gray-400" />
+            Loading notifications...
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center text-gray-500 shadow-sm">
             <Bell size={48} className="mx-auto mb-4 opacity-50" />
             <p>
               {filter === "all"
@@ -161,80 +191,79 @@ const NotificationsPage = () => {
           filteredNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-6 rounded-lg border-2 transition ${getNotificationColor(
+              className={`rounded-2xl border p-5 transition ${getNotificationStyles(
                 notification.type,
-              )} ${!notification.is_read ? "shadow-md" : ""}`}
+                notification.is_read,
+              )}`}
             >
               <div className="flex items-start gap-4">
-                {/* Icon */}
-                <span className="text-4xl flex-shrink-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-black/5">
                   {getNotificationIcon(notification.type)}
-                </span>
+                </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {notification.title}
-                        {!notification.is_read && (
-                          <span className="ml-2 inline-block w-2 h-2 bg-blue-600 rounded-full"></span>
-                        )}
-                      </h3>
-                      <p className="text-gray-700 mt-2 leading-relaxed">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {notification.title}
+                        </h3>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            notification.is_read
+                              ? "bg-gray-100 text-gray-600"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {notification.is_read ? "Read" : "Unread"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-gray-700">
                         {notification.message}
                       </p>
-                      <p className="text-sm text-gray-500 mt-3">
-                        {new Date(notification.created_at).toLocaleString()}
+                      <p className="mt-3 text-xs text-gray-500">
+                        {notification.created_at
+                          ? new Date(notification.created_at).toLocaleString()
+                          : "-"}
                       </p>
 
-                      {/* Booking Details */}
-                      {notification.booking && (
-                        <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
-                          <p className="text-sm font-semibold text-gray-900">
-                            Property: {notification.booking.property?.title}
+                      {notification.booking ? (
+                        <div className="mt-4 rounded-xl border border-white/60 bg-white/90 p-4 text-sm text-gray-700 shadow-sm">
+                          <p className="font-semibold text-gray-900">
+                            {notification.booking.property?.title || "Booking"}
                           </p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Tenant: {notification.booking.tenant?.name}
+                          <p className="mt-1 text-gray-600">
+                            {notification.booking.property?.location || "Address not available"}
                           </p>
-                          {notification.booking.move_in_date && (
-                            <p className="text-sm text-gray-600">
-                              Move-in:{" "}
-                              {new Date(
-                                notification.booking.move_in_date,
-                              ).toLocaleDateString()}
-                            </p>
-                          )}
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 self-start">
                       {canPayNow(notification) ? (
                         <button
                           onClick={() => handlePayNow(notification)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition"
-                          title="Pay now"
+                          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                         >
-                          <CreditCard size={20} />
+                          <CreditCard size={16} />
+                          Pay now
                         </button>
                       ) : null}
-                      {!notification.is_read && (
+                      {!notification.is_read ? (
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"
+                          className="rounded-lg bg-white/90 p-2 text-blue-600 transition hover:bg-blue-50"
                           title="Mark as read"
                         >
-                          <CheckCircle size={20} />
+                          <CheckCircle2 size={18} />
                         </button>
-                      )}
+                      ) : null}
                       <button
                         onClick={() => handleDelete(notification.id)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                        className="rounded-lg bg-white/90 p-2 text-red-600 transition hover:bg-red-50"
                         title="Delete"
                       >
-                        <Trash2 size={20} />
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
@@ -245,11 +274,10 @@ const NotificationsPage = () => {
         )}
       </div>
 
-      {/* Back Link */}
       <div className="mt-8">
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+          className="inline-flex items-center gap-2 font-medium text-blue-600 hover:text-blue-700"
         >
           ← Back to Dashboard
         </Link>

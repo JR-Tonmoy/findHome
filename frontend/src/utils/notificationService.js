@@ -3,6 +3,7 @@ const API_BASE_URL =
   import.meta.env.VITE_REACT_APP_BACKEND_URL?.replace(/\/$/, "") || "";
 const NOTIFICATION_API_URL = API_BASE_URL ? `/api/v1/notifications` : "";
 const BOOKING_API_URL = API_BASE_URL ? `/api/v1/bookings` : "";
+const TENANT_API_URL = API_BASE_URL ? `/api/v1/tenant` : "";
 const PAYMENT_API_URL = API_BASE_URL ? `/api/v1/payments` : "";
 
 /**
@@ -136,14 +137,44 @@ export const fetchOwnerBookings = async () => {
  * Fetch tenant's bookings (for tenant)
  */
 export const fetchTenantBookings = async () => {
-  if (!BOOKING_API_URL) return { data: [] };
+  if (!TENANT_API_URL) return { data: [] };
 
   try {
-    const res = await http.get(`${BOOKING_API_URL}/tenant`);
+    const res = await http.get(`${TENANT_API_URL}/bookings`);
     return res?.data || { data: [] };
   } catch (err) {
     console.warn("Failed to fetch tenant bookings:", err);
     return { data: [] };
+  }
+};
+
+/**
+ * Fetch tenant notifications using the authenticated tenant route.
+ */
+export const fetchTenantNotifications = async () => {
+  if (!TENANT_API_URL) return { data: [], unread_count: 0 };
+
+  try {
+    const res = await http.get(`${TENANT_API_URL}/notifications`);
+    return res?.data || { data: [], unread_count: 0 };
+  } catch (err) {
+    console.warn("Failed to fetch tenant notifications:", err);
+    return { data: [], unread_count: 0 };
+  }
+};
+
+/**
+ * Fetch tenant unread notification count.
+ */
+export const fetchTenantUnreadNotificationCount = async () => {
+  if (!TENANT_API_URL) return 0;
+
+  try {
+    const res = await http.get(`${TENANT_API_URL}/notifications/unread-count`);
+    return res?.data?.unread_count || res?.data || 0;
+  } catch (err) {
+    console.warn("Failed to fetch tenant unread notification count:", err);
+    return 0;
   }
 };
 
