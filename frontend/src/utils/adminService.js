@@ -5,6 +5,78 @@ const API_BASE_URL =
 const ADMIN_API_URL = API_BASE_URL ? `/api/admin` : "";
 const PUBLIC_API_URL = API_BASE_URL ? `/api/v1` : "";
 
+const getApiErrorMessage = (err, fallbackMessage) =>
+  err?.response?.data?.message ||
+  err?.response?.data?.error ||
+  err?.message ||
+  fallbackMessage;
+
+const updateLocalBlockedState = (collectionName, userId, blocked) => {
+  try {
+    const records = JSON.parse(localStorage.getItem(collectionName) || "[]");
+    const updatedRecords = records.map((record) =>
+      String(record.id) === String(userId)
+        ? {
+            ...record,
+            is_blocked: blocked,
+            account_status: blocked ? "blocked" : "active",
+          }
+        : record,
+    );
+
+    localStorage.setItem(collectionName, JSON.stringify(updatedRecords));
+    return (
+      updatedRecords.find((record) => String(record.id) === String(userId)) ||
+      null
+    );
+  } catch (err) {
+    console.warn(`Failed to update ${collectionName}`, err);
+    return null;
+  }
+};
+
+const toggleLocalBlockedState = (userId) => {
+  const collections = ["registeredUsers", "registeredOwners"];
+  let updatedRecord = null;
+
+  collections.forEach((collectionName) => {
+    try {
+      const records = JSON.parse(localStorage.getItem(collectionName) || "[]");
+      const target = records.find(
+        (record) => String(record.id) === String(userId),
+      );
+
+      if (!target) {
+        return;
+      }
+
+      const nextBlocked = !(
+        target.is_blocked ||
+        String(target.account_status || "active").toLowerCase() === "blocked"
+      );
+
+      const updatedRecords = records.map((record) =>
+        String(record.id) === String(userId)
+          ? {
+              ...record,
+              is_blocked: nextBlocked,
+              account_status: nextBlocked ? "blocked" : "active",
+            }
+          : record,
+      );
+
+      localStorage.setItem(collectionName, JSON.stringify(updatedRecords));
+      updatedRecord =
+        updatedRecords.find((record) => String(record.id) === String(userId)) ||
+        updatedRecord;
+    } catch (err) {
+      console.warn(`Failed to toggle ${collectionName}`, err);
+    }
+  });
+
+  return updatedRecord;
+};
+
 export const fetchAdminUsers = async () => {
   if (!API_BASE_URL) {
     try {
@@ -51,6 +123,45 @@ export const fetchAdminOwners = async () => {
     }
   }
 };
+
+export const toggleAdminUserBlock = async (userId) => {
+  if (!API_BASE_URL) {
+    return toggleLocalBlockedState(userId);
+  }
+
+  try {
+    const res = await http.patch(
+      `${ADMIN_API_URL}/users/${userId}/toggle-block`,
+    );
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("toggleAdminUserBlock failed", err);
+    throw err;
+  }
+};
+
+export const blockAdminUser = toggleAdminUserBlock;
+export const unblockAdminUser = toggleAdminUserBlock;
+export const activateAdminUser = toggleAdminUserBlock;
+
+export const toggleAdminOwnerBlock = async (ownerId) => {
+  if (!API_BASE_URL) {
+    return toggleLocalBlockedState(ownerId);
+  }
+
+  try {
+    const res = await http.patch(
+      `${ADMIN_API_URL}/owners/${ownerId}/toggle-block`,
+    );
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("toggleAdminOwnerBlock failed", err);
+    throw err;
+  }
+};
+
+export const blockAdminOwner = toggleAdminOwnerBlock;
+export const unblockAdminOwner = toggleAdminOwnerBlock;
 
 export const deleteAdminUser = async (id) => {
   if (!API_BASE_URL) return null;
@@ -109,6 +220,22 @@ export const fetchAdminBookings = async () => {
         return [];
       }
     }
+  }
+};
+
+export const fetchAdminBookingDetails = async (bookingId) => {
+  if (!API_BASE_URL || !bookingId) {
+    return null;
+  }
+
+  try {
+    const res = await http.get(
+      `${PUBLIC_API_URL}/bookings/${encodeURIComponent(bookingId)}`,
+    );
+    return res?.data?.data || res?.data || null;
+  } catch (err) {
+    console.warn("fetchAdminBookingDetails failed", err);
+    throw err;
   }
 };
 
@@ -206,17 +333,128 @@ export const fetchPaymentsAdmin = async (params = "?per_page=100") => {
   }
 };
 
+const buildQueryString = (params = {}) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      searchParams.set(key, value);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
+};
+
+export const fetchAdminPayments = async (params = {}) => {
+  if (!API_BASE_URL) {
+    try {
+      const payments = JSON.parse(localStorage.getItem("payments") || "[]");
+      return {
+        summary: {
+          totalRevenue: payments.reduce(
+            (sum, payment) =>
+              sum + Number(payment.amount || payment.total_payment || 0),
+            0,
+          ),
+          totalAdminCommission: payments.reduce(
+            (sum, payment) => sum + Number(payment.admin_commission || 0),
+            0,
+          ),
+          totalOwnerPayments: payments.reduce(
+            (sum, payment) =>
+              sum + Number(payment.owner_earning || payment.owner_share || 0),
+            0,
+          ),
+          totalRefundAmount: 0,
+          monthlyRevenue: 0,
+          totalPayments: payments.length,
+          totalSuccessfulPayments: payments.filter(
+            (payment) =>
+              String(payment.payment_status).toLowerCase() === "completed",
+          ).length,
+          totalPendingPayments: payments.filter(
+            (payment) =>
+              String(payment.payment_status).toLowerCase() === "pending",
+          ).length,
+          totalFailedPayments: payments.filter(
+            (payment) =>
+              String(payment.payment_status).toLowerCase() === "failed",
+          ).length,
+          totalRefundedPayments: payments.filter(
+            (payment) =>
+              String(payment.payment_status).toLowerCase() === "refunded",
+          ).length,
+          totalCancelledBookings: 0,
+          adminCommissionRate: 5,
+          ownerEarningRate: 95,
+        },
+        payments,
+        pagination: {
+          total: payments.length,
+          per_page: payments.length,
+          current_page: 1,
+          last_page: 1,
+        },
+      };
+    } catch {
+      return {
+        summary: {},
+        payments: [],
+        pagination: { total: 0, per_page: 0, current_page: 1, last_page: 1 },
+      };
+    }
+  }
+
+  try {
+    const res = await http.get(
+      `${ADMIN_API_URL}/payments${buildQueryString(params)}`,
+    );
+    return (
+      res?.data?.data ||
+      res?.data || { summary: {}, payments: [], pagination: {} }
+    );
+  } catch (err) {
+    console.warn("fetchAdminPayments failed", err);
+    throw err;
+  }
+};
+
+export const downloadAdminPaymentInvoice = async (paymentId) => {
+  if (!API_BASE_URL) {
+    throw new Error("Backend URL is not configured for invoice download.");
+  }
+
+  try {
+    return await http.get(`${ADMIN_API_URL}/payments/${paymentId}/invoice`, {
+      responseType: "blob",
+    });
+  } catch (err) {
+    console.error("Failed to download admin payment invoice:", err);
+    throw err;
+  }
+};
+
 export const fetchRevenueStats = async () => {
   if (!API_BASE_URL) return {};
 
   try {
-    const res = await http.get(`${PUBLIC_API_URL}/payments/stats`);
+    const res = await http.get(`${ADMIN_API_URL}/revenue`);
     return res?.data?.data || res?.data || {};
   } catch (err) {
-    console.warn("fetchRevenueStats failed", err);
-    return {};
+    console.warn("fetchRevenueStats failed, trying legacy stats endpoint", err);
+
+    try {
+      const res = await http.get(`${PUBLIC_API_URL}/payments/stats`);
+      return res?.data?.data || res?.data || {};
+    } catch (legacyErr) {
+      console.warn("legacy revenue stats endpoint failed", legacyErr);
+      return {};
+    }
   }
 };
+
+export const fetchAdminRevenue = fetchRevenueStats;
 
 export const fetchAdminProperties = async () => {
   if (!API_BASE_URL) {
@@ -293,29 +531,7 @@ export const deleteAdminProperty = async (propertyId) => {
   }
 };
 
-export const blockAdminUser = async (userId) => {
-  if (!API_BASE_URL) return null;
-
-  try {
-    const res = await http.put(`${ADMIN_API_URL}/users/${userId}/block`);
-    return res?.data?.data || res?.data || null;
-  } catch (err) {
-    console.warn("blockAdminUser failed", err);
-    throw err;
-  }
-};
-
-export const activateAdminUser = async (userId) => {
-  if (!API_BASE_URL) return null;
-
-  try {
-    const res = await http.put(`${ADMIN_API_URL}/users/${userId}/activate`);
-    return res?.data?.data || res?.data || null;
-  } catch (err) {
-    console.warn("activateAdminUser failed", err);
-    throw err;
-  }
-};
+export const getAdminErrorMessage = getApiErrorMessage;
 
 export const approveBookingAdmin = async (bookingId) => {
   if (!API_BASE_URL) {
@@ -437,8 +653,10 @@ export default {
   deleteAdminOwner,
   fetchAdminCancelledBookings,
   fetchAdminBookings,
+  fetchAdminBookingDetails,
   fetchDashboardStats,
   fetchPaymentsAdmin,
+  fetchAdminPayments,
   fetchOwnerCancelledBookings,
   fetchRevenueStats,
   fetchAdminProperties,
@@ -448,7 +666,13 @@ export default {
   rejectBookingAdmin,
   approveAdminProperty,
   deleteAdminProperty,
+  toggleAdminUserBlock,
   blockAdminUser,
+  unblockAdminUser,
   activateAdminUser,
+  toggleAdminOwnerBlock,
+  blockAdminOwner,
+  unblockAdminOwner,
+  downloadAdminPaymentInvoice,
   downloadAdminReportPdf,
 };

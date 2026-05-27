@@ -18,7 +18,7 @@ const fetchAdminProfileFromBackend = async () => {
   try {
     const res = await http.get(`${ADMIN_API_URL}/profile`);
     return normalizeMemberRecord(res?.data?.data || res?.data || null);
-  } catch (err) {
+  } catch {
     // Backend not available or request failed - fall back to local
     return null;
   }
@@ -30,7 +30,7 @@ const updateAdminProfileToBackend = async (profile) => {
   try {
     const res = await http.put(`${ADMIN_API_URL}/profile`, profile);
     return normalizeMemberRecord(res?.data?.data || res?.data || profile);
-  } catch (err) {
+  } catch {
     // If backend fails, silently return null so caller can fallback
     return null;
   }
@@ -61,6 +61,22 @@ const getUsername = (member) => {
   return `@${getDisplayName(member).trim().toLowerCase().replace(/\s+/g, "")}`;
 };
 
+const formatRegistrationDate = (value) => {
+  if (!value) return "N/A";
+
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return parsedDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
 const normalizeMemberRecord = (member = {}) => ({
   ...member,
   id: member.id || "",
@@ -71,7 +87,10 @@ const normalizeMemberRecord = (member = {}) => ({
   password: member.password || "",
   role: member.role || "tenant",
   username: getUsername(member),
-  date: member.date || member.registeredDate || "N/A",
+  date:
+    member.date ||
+    member.registeredDate ||
+    formatRegistrationDate(member.created_at || member.createdAt),
   avatar: member.avatar || "/default-profile.png",
 });
 
@@ -177,7 +196,7 @@ const syncAdminProfile = (updates = {}) => {
     (async () => {
       try {
         await updateAdminProfileToBackend(mergedProfile);
-      } catch (e) {
+      } catch {
         // ignore backend failures; local cache remains source of truth
       }
     })();

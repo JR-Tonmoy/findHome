@@ -37,6 +37,7 @@ import PaymentHistory from "../pages/User/Dashboard/PaymentHistory";
 import Profile from "../pages/User/Dashboard/Profile";
 import PropertyOwnerDashboard from "../pages/User/Dashboard/PropertyOwnerDashboard"; // ১। এখানে প্রোপ্রার্টি ওনার এর ড্যাশবোর্ড ইমপোর্ট করলাম
 import SavedHouses from "../pages/User/Dashboard/SavedHouses";
+import PaymentSuccess from "../pages/User/PaymentSuccess/PaymentSuccess";
 import Protected from "./Protected";
 import RoleProtected from "./RoleProtected";
 // import Sidebar from "../pages/User/Sidebar/Sidebar";
@@ -64,6 +65,10 @@ const Routers = () => {
       <Route path="/earn" element={<EarnMoney />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/payment/success/:transactionId"
+        element={<PaymentSuccess />}
+      />
 
       {/* 
         অ্যাডমিন ড্যাশবোর্ড এর রাউট

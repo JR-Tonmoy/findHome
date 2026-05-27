@@ -194,6 +194,55 @@ export const fetchTenantPayments = async (tenantId) => {
 };
 
 /**
+ * Fetch a payment by transaction ID for the payment success page.
+ */
+export const fetchPaymentByTransaction = async (
+  transactionId,
+  bookingId = null,
+) => {
+  if (!transactionId) return null;
+
+  try {
+    const queryParams = new URLSearchParams();
+    if (bookingId) {
+      queryParams.set("booking_id", bookingId);
+    }
+
+    const queryString = queryParams.toString();
+    const url = `/api/payments/success/${encodeURIComponent(transactionId)}${queryString ? `?${queryString}` : ""}`;
+
+    const res = await http.get(url);
+    return res?.data?.data || null;
+  } catch (err) {
+    console.warn("Failed to fetch payment by transaction:", err);
+    throw err;
+  }
+};
+
+/**
+ * Download a PDF invoice for a payment.
+ */
+export const downloadPaymentInvoice = async (paymentId) => {
+  if (!PAYMENT_API_URL || !paymentId) {
+    throw new Error("Payment invoice URL is not configured.");
+  }
+
+  try {
+    const res = await http.get(
+      `/api/v1/invoices/${encodeURIComponent(paymentId)}/download`,
+      {
+        responseType: "blob",
+      },
+    );
+
+    return res;
+  } catch (err) {
+    console.warn("Failed to download payment invoice:", err);
+    throw err;
+  }
+};
+
+/**
  * Initiate a booking payment and receive the SSLCommerz gateway URL.
  */
 export const initiateBookingPayment = async ({ bookingId, paymentMethod }) => {

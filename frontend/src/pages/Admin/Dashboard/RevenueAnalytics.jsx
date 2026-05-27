@@ -10,27 +10,22 @@ import adminService from "../../../utils/adminService";
 
 const RevenueAnalytics = () => {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    total_booked_houses: 0,
-    total_completed_payments: 0,
-    total_revenue: 0,
-    admin_commission: 0,
-    owner_earnings: 0,
-    total_cancelled_bookings: 0,
-    cancellation_admin_share: 0,
-    cancellation_owner_share: 0,
-    cancellation_refund_amount: 0,
+  const [revenue, setRevenue] = useState({
+    totalRevenue: 0,
+    totalAdminCommission: 0,
+    totalOwnerPayments: 0,
+    totalRefundAmount: 0,
+    monthlyRevenue: 0,
+    totalSuccessfulPayments: 0,
+    totalFailedPayments: 0,
+    totalCancelledBookings: 0,
+    admin_commission_rate: 5,
+    owner_earning_rate: 95,
+    recentTransactions: [],
   });
-  const [commissionRates, setCommissionRates] = useState({
-    admin: 5,
-    owner: 95,
-  });
-  const [payments, setPayments] = useState([]);
-  const [filteredPayments, setFilteredPayments] = useState([]);
   const [filterStatus, setFilterStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Load data on component mount
   useEffect(() => {
     let active = true;
 
@@ -38,56 +33,42 @@ const RevenueAnalytics = () => {
       setLoading(true);
       try {
         const revStats = await adminService.fetchRevenueStats();
-        const paymentsRes = await adminService.fetchPaymentsAdmin();
 
         if (!active) return;
 
-        setStats({
-          total_booked_houses:
-            revStats.total_booked_houses || revStats.total_bookings || 0,
-          total_completed_payments:
-            revStats.total_completed_payments || revStats.total_payments || 0,
-          total_revenue: revStats.total_revenue || revStats.total_revenue || 0,
-          admin_commission:
-            revStats.admin_commission || revStats.admin_commission || 0,
-          owner_earnings:
-            revStats.owner_earnings || revStats.owner_earnings || 0,
-          total_cancelled_bookings: revStats.total_cancelled_bookings || 0,
-          cancellation_admin_share: revStats.cancellation_admin_share || 0,
-          cancellation_owner_share: revStats.cancellation_owner_share || 0,
-          cancellation_refund_amount: revStats.cancellation_refund_amount || 0,
+        setRevenue({
+          totalRevenue: Number(
+            revStats.totalRevenue ?? revStats.total_revenue ?? 0,
+          ),
+          totalAdminCommission: Number(
+            revStats.totalAdminCommission ?? revStats.admin_commission ?? 0,
+          ),
+          totalOwnerPayments: Number(
+            revStats.totalOwnerPayments ?? revStats.owner_earnings ?? 0,
+          ),
+          totalRefundAmount: Number(
+            revStats.totalRefundAmount ??
+              revStats.cancellation_refund_amount ??
+              0,
+          ),
+          monthlyRevenue: Number(revStats.monthlyRevenue ?? 0),
+          totalSuccessfulPayments: Number(
+            revStats.totalSuccessfulPayments ??
+              revStats.total_completed_payments ??
+              0,
+          ),
+          totalFailedPayments: Number(revStats.totalFailedPayments ?? 0),
+          totalCancelledBookings: Number(
+            revStats.totalCancelledBookings ??
+              revStats.total_cancelled_bookings ??
+              0,
+          ),
+          admin_commission_rate: Number(revStats.admin_commission_rate ?? 5),
+          owner_earning_rate: Number(revStats.owner_earning_rate ?? 95),
+          recentTransactions: Array.isArray(revStats.recentTransactions)
+            ? revStats.recentTransactions
+            : [],
         });
-
-        const adminRate = Number(revStats.admin_commission_rate ?? 5);
-        const ownerRate = Number(
-          revStats.owner_earning_rate ?? 100 - adminRate,
-        );
-        setCommissionRates({
-          admin: adminRate,
-          owner: ownerRate,
-        });
-
-        const normalized = (Array.isArray(paymentsRes) ? paymentsRes : []).map(
-          (p) => ({
-            id: p.id,
-            property_name:
-              p.property?.title || p.property_name || p.property || "-",
-            tenant_name: p.tenant?.name || p.tenant_name || p.tenant || "-",
-            owner_name: p.owner?.name || p.owner_name || p.owner || "-",
-            total_payment: Number(p.total_payment || p.amount || p.price || 0),
-            admin_commission: Number(p.admin_commission || p.commission || 0),
-            owner_earning: Number(p.owner_earning || p.owner_share || 0),
-            payment_status: p.payment_status || p.status || "pending",
-            booking_date:
-              p.booking_date ||
-              p.created_at ||
-              p.date ||
-              new Date().toISOString(),
-          }),
-        );
-
-        setPayments(normalized);
-        setFilteredPayments(normalized);
       } catch (err) {
         console.error("Error fetching revenue data:", err);
         setErrorMessage("Failed to load revenue statistics");
@@ -103,17 +84,6 @@ const RevenueAnalytics = () => {
     };
   }, []);
 
-  // Filter payments by status
-  useEffect(() => {
-    if (filterStatus === "") {
-      setFilteredPayments(payments);
-    } else {
-      setFilteredPayments(
-        payments.filter((payment) => payment.payment_status === filterStatus),
-      );
-    }
-  }, [filterStatus, payments]);
-
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-BD", {
       style: "currency",
@@ -121,6 +91,19 @@ const RevenueAnalytics = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(amount);
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   const getStatusBadge = (status) => {
@@ -134,239 +117,199 @@ const RevenueAnalytics = () => {
     return statusStyles[status] || "bg-gray-100 text-gray-700";
   };
 
+  const cards = [
+    {
+      title: "Total Revenue",
+      value: formatCurrency(revenue.totalRevenue),
+      helper: "Completed payments + refund commission",
+      icon: <DollarSign size={24} />,
+      tone: "blue",
+    },
+    {
+      title: "Total Admin Earnings",
+      value: formatCurrency(revenue.totalAdminCommission),
+      helper: `${revenue.admin_commission_rate}% commission + refund share`,
+      icon: <TrendingUp size={24} />,
+      tone: "orange",
+    },
+    {
+      title: "Total Owner Payout",
+      value: formatCurrency(revenue.totalOwnerPayments),
+      helper: `${revenue.owner_earning_rate}% owner share`,
+      icon: <Package size={24} />,
+      tone: "green",
+    },
+    {
+      title: "Total Refund Amount",
+      value: formatCurrency(revenue.totalRefundAmount),
+      helper: "90% tenant refund total",
+      icon: <XCircle size={24} />,
+      tone: "sky",
+    },
+    {
+      title: "Monthly Revenue",
+      value: formatCurrency(revenue.monthlyRevenue),
+      helper: "Current month revenue",
+      icon: <DollarSign size={24} />,
+      tone: "purple",
+    },
+    {
+      title: "Successful Payments",
+      value: String(revenue.totalSuccessfulPayments),
+      helper: "Completed transactions",
+      icon: <CreditCard size={24} />,
+      tone: "emerald",
+    },
+    {
+      title: "Failed Payments",
+      value: String(revenue.totalFailedPayments),
+      helper: "Gateway or validation failures",
+      icon: <XCircle size={24} />,
+      tone: "rose",
+    },
+    {
+      title: "Cancelled Bookings",
+      value: String(revenue.totalCancelledBookings),
+      helper: "Processed cancellations",
+      icon: <Package size={24} />,
+      tone: "slate",
+    },
+  ];
+
+  const cardToneClasses = {
+    blue: "bg-blue-100 text-blue-600",
+    orange: "bg-orange-100 text-orange-600",
+    green: "bg-green-100 text-green-600",
+    sky: "bg-sky-100 text-sky-600",
+    purple: "bg-purple-100 text-purple-600",
+    emerald: "bg-emerald-100 text-emerald-600",
+    rose: "bg-rose-100 text-rose-600",
+    slate: "bg-slate-100 text-slate-600",
+  };
+
+  const recentTransactions = revenue.recentTransactions.filter(
+    (transaction) => {
+      if (!filterStatus) return true;
+      return transaction.payment_status === filterStatus;
+    },
+  );
+
   return (
-    <div className="w-full">
-      {/* Page Header */}
-      <div className="mb-8 pb-6 border-b border-gray-200">
+    <div className="w-full space-y-8">
+      <div className="mb-2 pb-6 border-b border-gray-200">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Revenue Analytics
         </h1>
         <p className="text-gray-600">
-          Track platform revenue, payments, and commission distribution
+          Live revenue, payment, booking, and refund data from the backend
         </p>
       </div>
 
-      {/* Error Message */}
       {errorMessage && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
           {errorMessage}
         </div>
       )}
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-        {/* Total Booked Houses */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <Package size={24} />
-            </div>
-            <span className="text-2xl font-bold text-blue-600">
-              {stats.total_booked_houses}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">
-            Total Booked Houses
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">Active bookings</p>
+      {loading ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-gray-600 shadow-sm">
+          Loading revenue data...
         </div>
-
-        {/* Total Completed Payments */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <CreditCard size={24} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {cards.map((card) => (
+            <div
+              key={card.title}
+              className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-md"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${cardToneClasses[card.tone]}`}
+                >
+                  {card.icon}
+                </div>
+                <span className="text-2xl font-bold text-gray-900">
+                  {card.value}
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-gray-700">
+                {card.title}
+              </h3>
+              <p className="mt-1 text-xs text-gray-400">{card.helper}</p>
             </div>
-            <span className="text-2xl font-bold text-emerald-600">
-              {stats.total_completed_payments}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">
-            Completed Payments
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">Successful transactions</p>
+          ))}
         </div>
+      )}
 
-        {/* Total Platform Revenue */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <DollarSign size={24} />
-            </div>
-            <span className="text-xl font-bold text-purple-600">
-              {formatCurrency(stats.total_revenue)}
-            </span>
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">
+              Recent Transactions
+            </h3>
+            <p className="text-sm text-gray-500">
+              Latest payment and refund activity from the database
+            </p>
           </div>
-          <h3 className="text-gray-600 text-sm font-medium">
-            Total Platform Revenue
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">All transactions</p>
-        </div>
-
-        {/* Total Admin Commission */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-orange-100 text-orange-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <TrendingUp size={24} />
-            </div>
-            <span className="text-xl font-bold text-orange-600">
-              {formatCurrency(stats.admin_commission)}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">
-            Admin Commission
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">
-            {commissionRates.admin}% of revenue
-          </p>
-        </div>
-
-        {/* Total Owner Earnings */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <TrendingUp size={24} />
-            </div>
-            <span className="text-xl font-bold text-green-600">
-              {formatCurrency(stats.owner_earnings)}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">Owner Earnings</h3>
-          <p className="text-xs text-gray-400 mt-1">
-            {commissionRates.owner}% distributed
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-rose-100 text-rose-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <XCircle size={24} />
-            </div>
-            <span className="text-2xl font-bold text-rose-600">
-              {stats.total_cancelled_bookings}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">
-            Cancelled Bookings
-          </h3>
-          <p className="text-xs text-gray-400 mt-1">Refund window processed</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-sky-100 text-sky-600 w-12 h-12 rounded-lg flex items-center justify-center">
-              <DollarSign size={24} />
-            </div>
-            <span className="text-xl font-bold text-sky-600">
-              {formatCurrency(stats.cancellation_refund_amount)}
-            </span>
-          </div>
-          <h3 className="text-gray-600 text-sm font-medium">Tenant Refunds</h3>
-          <p className="text-xs text-gray-400 mt-1">90% refund total</p>
-        </div>
-      </div>
-
-      {/* Revenue Table Section */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-        {/* Table Header with Filter */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h3 className="text-xl font-bold text-gray-900">Payment History</h3>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600">
-                Filter:
-              </label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Statuses</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-600">Filter:</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Statuses</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+              <option value="refunded">Refunded</option>
+            </select>
           </div>
         </div>
 
-        {/* Table Content */}
-        {loading ? (
-          <div className="p-12 text-center text-gray-500">
-            Loading payment records...
-          </div>
-        ) : filteredPayments.length > 0 ? (
+        {recentTransactions.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Property Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Tenant Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Owner Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Total Rent Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Admin Commission
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Owner Earnings
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Payment Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">
-                    Booking Date
-                  </th>
+            <table className="w-full text-left">
+              <thead className="bg-gray-50">
+                <tr className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-6 py-4">Transaction ID</th>
+                  <th className="px-6 py-4">Tenant Name</th>
+                  <th className="px-6 py-4">Property</th>
+                  <th className="px-6 py-4">Payment Amount</th>
+                  <th className="px-6 py-4">Admin Commission</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredPayments.map((payment) => (
-                  <tr
-                    key={payment.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                      {payment.property_name}
+                {recentTransactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50/60">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {transaction.transaction_id}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {payment.tenant_name}
+                      {transaction.tenant_name}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {payment.owner_name}
+                      {transaction.property_name}
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {formatCurrency(payment.total_payment)}
+                      {formatCurrency(transaction.payment_amount)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-orange-600 font-medium">
-                      {formatCurrency(payment.admin_commission)} (
-                      {commissionRates.admin}%)
-                    </td>
-                    <td className="px-6 py-4 text-sm text-green-600 font-medium">
-                      {formatCurrency(payment.owner_earning)} (
-                      {commissionRates.owner}%)
+                    <td className="px-6 py-4 text-sm font-semibold text-orange-600">
+                      {formatCurrency(transaction.admin_commission)}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-                          payment.payment_status,
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
+                          transaction.payment_status,
                         )}`}
                       >
-                        {payment.payment_status.charAt(0).toUpperCase() +
-                          payment.payment_status.slice(1)}
+                        {transaction.payment_status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(payment.booking_date).toLocaleDateString(
-                        "en-BD",
-                      )}
+                      {formatDate(transaction.created_at)}
                     </td>
                   </tr>
                 ))}
@@ -374,60 +317,10 @@ const RevenueAnalytics = () => {
             </table>
           </div>
         ) : (
-          <div className="p-12 text-center text-gray-500">
-            No payment records found.
+          <div className="px-6 py-12 text-center text-gray-500">
+            No transaction data found.
           </div>
         )}
-      </div>
-
-      {/* Revenue Summary Footer */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
-          <h3 className="text-sm font-semibold text-blue-900 mb-2">
-            Commission Structure
-          </h3>
-          <p className="text-xs text-blue-700 mb-3">
-            Platform revenue is split between admin and property owners
-          </p>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Admin Commission:</span>
-              <span className="font-bold text-blue-900">
-                {commissionRates.admin}%
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Owner Share:</span>
-              <span className="font-bold text-blue-900">
-                {commissionRates.owner}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-green-50 rounded-xl p-6 border border-green-100">
-          <h3 className="text-sm font-semibold text-green-900 mb-2">
-            Total Distributed to Owners
-          </h3>
-          <p className="text-2xl font-bold text-green-600 mt-4">
-            {formatCurrency(stats.owner_earnings)}
-          </p>
-          <p className="text-xs text-green-700 mt-2">
-            Across {stats.total_completed_payments} completed payments
-          </p>
-        </div>
-
-        <div className="bg-orange-50 rounded-xl p-6 border border-orange-100">
-          <h3 className="text-sm font-semibold text-orange-900 mb-2">
-            Platform Commission Earned
-          </h3>
-          <p className="text-2xl font-bold text-orange-600 mt-4">
-            {formatCurrency(stats.admin_commission)}
-          </p>
-          <p className="text-xs text-orange-700 mt-2">
-            From {stats.total_completed_payments} successful transactions
-          </p>
-        </div>
       </div>
     </div>
   );

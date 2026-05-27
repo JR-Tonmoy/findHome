@@ -8,6 +8,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
 import adminService from "../../../utils/adminService";
 import { normalizeMemberRecord } from "../../../utils/memberStorage";
 
@@ -15,6 +16,9 @@ const Users = () => {
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pendingStatusAction, setPendingStatusAction] = useState(null);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     let active = true;
@@ -43,9 +47,31 @@ const Users = () => {
     };
   }, []);
 
-  const handleRemoveUser = async (index) => {
-    const user = registeredUsers[index];
-    const updatedUsers = registeredUsers.filter((_, i) => i !== index);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(registeredUsers.length / itemsPerPage),
+  );
+  const paginatedUsers = registeredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  const handleRemoveUser = async (user) => {
+    const updatedUsers = registeredUsers.filter((item) => {
+      if (user?.id) {
+        return item.id !== user.id;
+      }
+
+      return !(
+        item.email === user?.email &&
+        item.username === user?.username &&
+        item.date === user?.date
+      );
+    });
     setRegisteredUsers(updatedUsers);
 
     try {
@@ -59,29 +85,77 @@ const Users = () => {
     }
   };
 
-  const handleBlockUser = async (userId) => {
-    try {
-      const updatedUser = await adminService.blockAdminUser(userId);
-      setRegisteredUsers((current) =>
-        current.map((user) =>
-          user.id === userId ? { ...user, ...updatedUser } : user,
-        ),
-      );
-    } catch (err) {
-      alert(err?.message || "Failed to block user");
+  const getVisiblePages = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
     }
+
+    const pages = [1];
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    if (startPage > 2) {
+      pages.push("start-ellipsis");
+    }
+
+    for (let page = startPage; page <= endPage; page += 1) {
+      pages.push(page);
+    }
+
+    if (endPage < totalPages - 1) {
+      pages.push("end-ellipsis");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
   };
 
-  const handleActivateUser = async (userId) => {
+  const isBlockedAccount = (accountStatus) =>
+    Boolean(accountStatus?.is_blocked) ||
+    String(
+      accountStatus?.account_status || accountStatus || "active",
+    ).toLowerCase() === "blocked";
+
+  const handleToggleUserStatus = async (targetUser) => {
+    const blocked = isBlockedAccount(targetUser);
+    const toastId = toast.loading(
+      blocked ? "Unblocking user..." : "Blocking user...",
+    );
+    setPendingStatusAction(`toggle-${targetUser.id}`);
+
     try {
-      const updatedUser = await adminService.activateAdminUser(userId);
+      const updatedUser = await adminService.toggleAdminUserBlock(
+        targetUser.id,
+      );
+      const nextBlocked = Boolean(updatedUser?.is_blocked);
+
       setRegisteredUsers((current) =>
-        current.map((user) =>
-          user.id === userId ? { ...user, ...updatedUser } : user,
+        current.map((currentUser) =>
+          currentUser.id === targetUser.id
+            ? {
+                ...currentUser,
+                ...updatedUser,
+                is_blocked: nextBlocked,
+                account_status: nextBlocked ? "blocked" : "active",
+              }
+            : currentUser,
         ),
       );
+
+      toast.success(
+        nextBlocked
+          ? "User blocked successfully"
+          : "User unblocked successfully",
+        { id: toastId },
+      );
     } catch (err) {
-      alert(err?.message || "Failed to activate user");
+      toast.error(
+        adminService.getAdminErrorMessage(err, "Failed to update user status"),
+        { id: toastId },
+      );
+    } finally {
+      setPendingStatusAction(null);
     }
   };
 
@@ -228,6 +302,7 @@ const Users = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white text-gray-600 text-xs font-semibold border-b border-gray-100 tracking-wide">
+                <th className="w-16 px-4 py-4 text-center">SL</th>
                 <th className="px-6 py-4">User Details</th>
                 <th className="px-6 py-4">User Name</th>
                 <th className="px-6 py-4">Email</th>
@@ -240,17 +315,20 @@ const Users = () => {
                 <tr>
                   <td
                     className="px-6 py-8 text-center text-gray-500"
-                    colSpan={5}
+                    colSpan={6}
                   >
                     No user registration found yet.
                   </td>
                 </tr>
               ) : (
-                registeredUsers.map((user, index) => (
+                paginatedUsers.map((user, index) => (
                   <tr
                     key={user.id || `${user.email}-${index}`}
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition"
                   >
+                    <td className="px-4 py-4 text-center text-[13px] font-semibold text-gray-500 whitespace-nowrap">
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </td>
                     <td className="px-6 py-4 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 ring-1 ring-gray-100 flex items-center justify-center shrink-0">
                         {user.avatar ? (
@@ -270,6 +348,15 @@ const Users = () => {
                         <p className="text-[12px] text-gray-500 mt-0.5 truncate">
                           {user.phone}
                         </p>
+                        <span
+                          className={`mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            isBlockedAccount(user)
+                              ? "bg-red-50 text-red-700"
+                              : "bg-emerald-50 text-emerald-700"
+                          }`}
+                        >
+                          {isBlockedAccount(user) ? "Blocked" : "Active"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500 text-[13px] font-medium">
@@ -283,29 +370,37 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-2">
-                        {String(
-                          user.account_status || "active",
-                        ).toLowerCase() === "blocked" ? (
+                        {isBlockedAccount(user) ? (
                           <button
-                            onClick={() => handleActivateUser(user.id)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition text-sm font-medium"
-                            title="Activate user"
+                            onClick={() => handleToggleUserStatus(user)}
+                            disabled={
+                              pendingStatusAction === `toggle-${user.id}`
+                            }
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="Unblock user"
                           >
                             <ShieldCheck size={14} />
-                            Activate
+                            {pendingStatusAction === `toggle-${user.id}`
+                              ? "Unblocking..."
+                              : "Unblock"}
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleBlockUser(user.id)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition text-sm font-medium"
+                            onClick={() => handleToggleUserStatus(user)}
+                            disabled={
+                              pendingStatusAction === `toggle-${user.id}`
+                            }
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                             title="Block user"
                           >
                             <ShieldOff size={14} />
-                            Block
+                            {pendingStatusAction === `toggle-${user.id}`
+                              ? "Blocking..."
+                              : "Block"}
                           </button>
                         )}
                         <button
-                          onClick={() => handleRemoveUser(index)}
+                          onClick={() => handleRemoveUser(user)}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium"
                           title="Remove user"
                         >
@@ -322,33 +417,49 @@ const Users = () => {
         </div>
 
         <div className="px-6 py-4 flex justify-between items-center text-sm border-t border-gray-50 bg-white">
-          <button className="flex items-center gap-1.5 font-medium text-gray-600 hover:text-gray-900 transition">
+          <button
+            type="button"
+            disabled={currentPage === 1}
+            onClick={() =>
+              setCurrentPage((current) => Math.max(1, current - 1))
+            }
+            className="flex items-center gap-1.5 font-medium text-gray-600 hover:text-gray-900 transition disabled:cursor-not-allowed disabled:text-gray-300"
+          >
             ← Previous
           </button>
           <div className="flex gap-1 items-center">
-            <button className="w-8 h-8 flex items-center justify-center bg-indigo-50 text-[#6366f1] rounded-lg font-semibold">
-              1
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-600 rounded-lg font-medium transition">
-              2
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-600 rounded-lg font-medium transition">
-              3
-            </button>
-            <span className="w-8 h-8 flex items-center justify-center text-gray-400">
-              ...
-            </span>
-            <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-600 rounded-lg font-medium transition">
-              8
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-600 rounded-lg font-medium transition">
-              9
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 text-gray-600 rounded-lg font-medium transition">
-              10
-            </button>
+            {getVisiblePages().map((page, index) =>
+              typeof page === "number" ? (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg font-semibold transition ${
+                    currentPage === page
+                      ? "bg-indigo-50 text-[#6366f1]"
+                      : "hover:bg-gray-50 text-gray-600 font-medium"
+                  }`}
+                >
+                  {page}
+                </button>
+              ) : (
+                <span
+                  key={`${page}-${index}`}
+                  className="w-8 h-8 flex items-center justify-center text-gray-400"
+                >
+                  ...
+                </span>
+              ),
+            )}
           </div>
-          <button className="flex items-center gap-1.5 font-medium text-gray-600 hover:text-gray-900 transition">
+          <button
+            type="button"
+            disabled={currentPage === totalPages}
+            onClick={() =>
+              setCurrentPage((current) => Math.min(totalPages, current + 1))
+            }
+            className="flex items-center gap-1.5 font-medium text-gray-600 hover:text-gray-900 transition disabled:cursor-not-allowed disabled:text-gray-300"
+          >
             Next →
           </button>
         </div>

@@ -87,11 +87,10 @@ const OwnerSidebar = ({ isOpen, setIsSidebarOpen }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 w-64 z-50 transform transition-transform duration-300 md:translate-x-0 
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        flex flex-col justify-between pb-10 shadow-lg`}
+        className={`fixed left-0 top-0 z-50 flex h-screen min-h-screen w-64 transform flex-col justify-between border-r border-gray-200 bg-white pb-10 shadow-lg transition-transform duration-300 md:translate-x-0 
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* Logo Section */}
           <div className="p-6 border-b border-gray-200 flex justify-between items-center">
             <div className="flex-1">
@@ -137,7 +136,7 @@ const OwnerSidebar = ({ isOpen, setIsSidebarOpen }) => {
           </div>
 
           {/* Navigation Menu */}
-          <ul className="p-4 space-y-2 mt-6">
+          <ul className="mt-6 flex-1 overflow-y-auto p-4 space-y-2">
             {sideMenus.map((menu, index) => (
               <li key={index}>
                 <NavLink

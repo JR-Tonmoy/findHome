@@ -22,7 +22,7 @@ const DashboardLayout = () => {
   const SidebarComponent = isOwner ? OwnerSidebar : TenantSidebar;
 
   return (
-    <div className="flex bg-gray-50 min-h-screen relative">
+    <div className="relative flex h-screen min-h-screen overflow-hidden bg-gray-50">
       {/* Mobile Menu Button */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-lg shadow text-gray-700 hover:bg-gray-100"
@@ -35,7 +35,7 @@ const DashboardLayout = () => {
       <SidebarComponent isOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 p-4 md:p-6 pt-16 md:pt-6 w-full lg:w-auto h-screen overflow-y-auto">
+      <div className="h-full w-full flex-1 overflow-y-auto p-4 pt-16 md:ml-64 md:p-6 md:pt-6 lg:w-auto">
         <Outlet />
       </div>
     </div>
